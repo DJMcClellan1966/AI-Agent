@@ -69,6 +69,8 @@ This gives you a single codebase where “Synthesis” is one agent mode and “
 - In the agent prompt, inject “Relevant snippets: …” so it can refer to the user’s actual files.  
 This is the “outside-the-box” upgrade that makes the agent feel like it “understands” the project.
 
+**Implemented (light):** When `workspace_root` is set, the kernel injects a **workspace context block** into the system prompt: top-level files/dirs from `list_dir`, plus optional quick **search** using keywords from the last user message (no embeddings). Context flag `inject_search_context: false` disables the search part. CLI: `--no-search-context`.
+
 ---
 
 ## Path 3: Multiple Interfaces (Same Agent)
@@ -76,6 +78,8 @@ This is the “outside-the-box” upgrade that makes the agent feel like it “u
 - **Web (current)** – Build + Agent tabs.
 - **CLI** – e.g. `python -m app.agent_cli` that runs the same kernel in the terminal (stdin/stdout); useful for scripting and power users.
 - **Slack/Discord bot** – same backend, new route that receives webhooks and pushes replies back. One agent, many surfaces.
+
+**Implemented:** **Agent CLI** – From the backend directory: `python -m app.agent_cli [--workspace PATH] [--autonomous] [--no-search-context]`. Uses the same kernel (no server/auth). Set `WORKSPACE_ROOT` or `--workspace` for file tools; `--autonomous` runs edits/commands without prompting.
 
 ---
 
@@ -92,7 +96,7 @@ This is the “outside-the-box” upgrade that makes the agent feel like it “u
 | Idea | What it is | Why it’s interesting |
 |------|------------|----------------------|
 | **Voice in/out** | Speech-to-text for input, TTS for reply | Feels like a pair programmer you talk to. |
-| **Human-in-the-loop by default** | Every tool call (edit, run) requires approval; “Autonomous” is opt-in. | Trust and safety from day one. |
+| **Human-in-the-loop by default** | Every tool call (edit, run) requires approval; “Autonomous” is opt-in. | Trust and safety from day one. **Done:** default is approval; UI and CLI have an “Autonomous” opt-in; context `autonomous: true` runs edit_file/run_terminal immediately. |
 | **Codebase embeddings** | Index repo with sentence-transformers; “relevant snippets” in context. | Agent can answer “where do we handle auth?” from your code. |
 | **Multi-agent** | Coordinator agent that delegates to “code”, “docs”, “test” agents (each with different tools/prompts). | You already had Coordinator; reuse it as the “brain” and give it sub-agents with tools. |
 | **Agent recipes** | User-defined flows: “when I say X, do Y and Z.” | Custom behavior without changing core code. |
@@ -118,17 +122,32 @@ This is the “outside-the-box” upgrade that makes the agent feel like it “u
 
 ---
 
-## Implemented: Phase 1 kernel + endpoint
+## Path 1 status: complete
 
-In this repo you now have:
+All three phases are implemented:
 
-- **`backend/app/services/agent_kernel.py`** – `run_loop(messages, context, tools, max_turns)` runs the LLM in a loop; the model can output either a tool call (JSON with `tool` + `args`) or a final `reply`. Built-in tools:
-  - `suggest_questions` – uses your existing suggest_questions (conversation → 1–2 questions).
-  - `generate_app` – uses conversation_to_spec + spec_to_code (no DB save; caller can persist).
-  - `read_file` – reads from `context.workspace_root` (returns error if not set).
-  - `list_dir` – lists a directory under `workspace_root`.
-- **`POST /api/v1/agent/chat`** – body: `{ "messages": [ { "role", "content" } ], "context": { "workspace_root": "/optional/path" } }`. Returns `{ "reply": "...", "messages": [ ... ] }`.
+**Phase 1 – Kernel + endpoint**
+- **`backend/app/services/agent_kernel.py`** – `run_loop(messages, context, tools, max_turns)` runs the LLM in a loop; the model outputs either a tool call (JSON with `tool` + `args`) or a final `reply`.
+- **`POST /api/v1/agent/chat`** – body: `{ "messages", "context": { "workspace_root?", "codelearn_guidance_url?", "codeiq_workspace?" } }`. Returns `{ "reply", "messages", "pending_approval?" }`.
+- **`POST /api/v1/agent/execute-pending`** – run an approved `edit_file` or `run_terminal` and continue the loop.
 
-**How to try it:** Call the endpoint with a single user message, e.g. “I want a habit tracker.” The agent can call `suggest_questions` or `generate_app` and then reply. Set `context.workspace_root` to a directory path (on the server) to try `read_file` / `list_dir`.
+**Phase 2 – Real tools**
+- `suggest_questions` – conversation → 1–2 follow-up questions.
+- `generate_app` – conversation_to_spec + spec_to_code (Build as composite tool).
+- `read_file(path)` – read file under `workspace_root`.
+- `list_dir(path)` – list directory under `workspace_root`.
+- **`search_files(pattern, path?)`** – grep-style search: literal substring in text files under workspace; returns path, line number, and line content (capped).
+- `edit_file(path, old_string, new_string)` – requires approval; diff shown, then `execute-pending` to apply.
+- `run_terminal(command, cwd?)` – requires approval; then `execute-pending` to run.
+- Optional CodeIQ tools (`search_code`, `analyze_code`) when `CODEIQ_WORKSPACE` or context is set.
 
-**Next steps for you:** Add an “Agent” chat UI that calls this endpoint; add tools like `edit_file` and `run_terminal` with human-in-the-loop (show proposed edit or command, confirm before running).
+**Phase 3 – UI and control**
+- **Agent** page: chat, workspace root, **Autonomous** toggle (opt-in: edits/commands run without approval), Integrations (CodeLearn / CodeIQ toggles), pending-approval cards (Approve / Cancel), debug toggle.
+
+**Path 2 (light) – Workspace context**
+- With `workspace_root` set, the system prompt gets a short **workspace context**: top-level files/dirs and (unless disabled) a quick search using the last user message’s keywords, so the agent “sees” the project.
+
+**Path 3 – CLI**
+- **`python -m app.agent_cli`** (from backend dir): `--workspace PATH`, `--autonomous`, `--no-search-context`. Same kernel, no server.
+
+**How to try it:** Open the Agent page, set a workspace root (or use Integrations for CodeIQ), and ask e.g. “Search for TODO in this project” or “List files in src.” For edits or commands, approve in the UI (or turn on Autonomous). Or run the CLI from the backend directory.

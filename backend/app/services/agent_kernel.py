@@ -83,6 +83,50 @@ def _tool_list_dir(context: Dict[str, Any], path: str = ".") -> str:
         return json.dumps({"error": str(e)})
 
 
+def _tool_search_files(context: Dict[str, Any], pattern: str, path: str = ".") -> str:
+    """Search for pattern in workspace files (literal substring). Returns path, line_no, line."""
+    root = context.get("workspace_root") or ""
+    if not root:
+        return json.dumps({"error": "Workspace not configured. Set workspace_root in context."})
+    base_full = _safe_path(root, path)
+    if not base_full:
+        return json.dumps({"error": "Path outside workspace."})
+    if not pattern:
+        return json.dumps({"error": "pattern is required."})
+    # Text extensions to search; skip binary and large dirs
+    text_ext = (".py", ".js", ".ts", ".tsx", ".jsx", ".html", ".css", ".json", ".md", ".txt", ".yml", ".yaml", ".toml", ".sh", ".bat", ".env")
+    max_matches = 100
+    max_file_size = 500_000
+    matches: List[Dict[str, Any]] = []
+    try:
+        for dirpath, _dirnames, filenames in os.walk(base_full):
+            if len(matches) >= max_matches:
+                break
+            rel_dir = os.path.relpath(dirpath, base_full) if dirpath != base_full else "."
+            for name in filenames:
+                if len(matches) >= max_matches:
+                    break
+                if not (name.endswith(text_ext) or "." not in name):
+                    continue
+                full_path = os.path.join(dirpath, name)
+                try:
+                    size = os.path.getsize(full_path)
+                    if size > max_file_size:
+                        continue
+                    with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                        for line_no, line in enumerate(f, 1):
+                            if pattern in line:
+                                rel_path = os.path.join(rel_dir, name) if rel_dir != "." else name
+                                matches.append({"path": rel_path.replace("\\", "/"), "line": line_no, "content": line.rstrip()[:200]})
+                                if len(matches) >= max_matches:
+                                    break
+                except (OSError, UnicodeDecodeError):
+                    continue
+        return json.dumps({"pattern": pattern, "path": path, "matches": matches})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
 def _tool_edit_file_preview(context: Dict[str, Any], path: str, old_string: str, new_string: str) -> Dict[str, Any]:
     """Return pending_approval with diff preview; does not write."""
     root = context.get("workspace_root") or ""
@@ -190,6 +234,11 @@ def get_default_tools(context: Optional[Dict[str, Any]] = None) -> List[ToolSpec
             "function": _tool_list_dir,
         },
         {
+            "name": "search_files",
+            "description": "Search for a literal string in workspace files (e.g. 'TODO', 'def foo'). Input: pattern or query (required), path (optional, default '.'). Returns matching path, line number, and line content. Requires workspace_root in context.",
+            "function": lambda ctx, pattern=None, path=".", **kwargs: _tool_search_files(ctx, pattern or kwargs.get("query") or "", path or kwargs.get("path") or "."),
+        },
+        {
             "name": "edit_file",
             "description": "Edit a file: replace old_string with new_string (first occurrence). Requires user approval. Input: path, old_string, new_string. Requires workspace_root in context.",
             "function": lambda ctx, path=None, old_string=None, new_string=None: _tool_edit_file_preview(ctx, path or "", old_string or "", new_string or ""),
@@ -203,6 +252,41 @@ def get_default_tools(context: Optional[Dict[str, Any]] = None) -> List[ToolSpec
     ]
 
 
+def _get_workspace_context_block(context: Dict[str, Any], messages: List[Dict[str, str]]) -> str:
+    """Build a short workspace context for the system prompt (Path 2 light: no embeddings)."""
+    root = (context.get("workspace_root") or "").strip()
+    if not root or not os.path.isdir(root):
+        return ""
+    lines = ["\nWorkspace context (workspace_root is set):"]
+    try:
+        entries = os.listdir(root)
+        # Top-level only, cap at 40 items
+        top = sorted(entries)[:40]
+        lines.append("Top-level files/dirs: " + ", ".join(top))
+    except OSError:
+        lines.append("(could not list workspace)")
+    # Optional: quick search using last user message keywords (no embeddings)
+    last_user = None
+    for m in reversed(messages):
+        if m.get("role") == "user" and (m.get("content") or "").strip():
+            last_user = (m.get("content") or "").strip()
+            break
+    if last_user and context.get("inject_search_context") is not False:
+        words = [w for w in last_user.replace(",", " ").split() if len(w) > 3][:5]
+        if words:
+            for w in words[:2]:  # at most 2 quick searches
+                try:
+                    raw = _tool_search_files(context, w, ".")
+                    data = json.loads(raw)
+                    if data.get("matches"):
+                        for hit in data["matches"][:5]:
+                            lines.append(f"  {hit.get('path', '')}:{hit.get('line', '')} {hit.get('content', '')[:80]}")
+                        break  # one search is enough for context
+                except (json.JSONDecodeError, TypeError):
+                    pass
+    return "\n".join(lines) if len(lines) > 1 else ""
+
+
 def run_loop(
     messages: List[Dict[str, str]],
     context: Optional[Dict[str, Any]] = None,
@@ -213,6 +297,7 @@ def run_loop(
     Run the agent loop: LLM can call tools or return a final reply.
     Returns (updated_messages, final_reply_text, pending_approval).
     When a tool returns pending_approval (edit_file, run_terminal), reply is None and pending_approval is set.
+    Unless context.autonomous is True, in which case the tool is executed and the loop continues.
     Time: O(max_turns * (|messages| + LLM call)); tool_map build O(|tools|).
     """
     context = context or {}
@@ -221,21 +306,26 @@ def run_loop(
 
     # Optional: inject CodeLearn guidance (cuddly-octo); context can override url and enabled
     guidance_block = _get_codelearn_guidance_block(context)
+    workspace_block = _get_workspace_context_block(context, messages)
     tool_descriptions = "\n".join(
         f"- {t['name']}: {t['description']}" for t in tools
     )
 
+    approval_note = " For file edits or running commands, use edit_file or run_terminal; the user will approve before they run."
+    if context.get("autonomous"):
+        approval_note = " Autonomous mode: edit_file and run_terminal will run immediately without asking."
+
     system = f"""You are a helpful coding and product assistant. You have access to these tools:
 
 {tool_descriptions}
-{guidance_block}
+{guidance_block}{workspace_block}
 
 Reply with JSON only. Either:
 1) To call a tool: {{"thought": "brief reasoning", "tool": "tool_name", "args": {{...}}}}
    Use "messages" for the current conversation when a tool needs it (list of {{"role": "user"|"system", "content": "..."}}).
 2) To reply to the user and finish: {{"thought": "brief reasoning", "reply": "your reply text"}}
 
-Be concise. For file edits or running commands, use edit_file or run_terminal; the user will approve before they run."""
+Be concise.{approval_note}"""
 
     current = list(messages)
     # Avoid duplicating system prompt when continuing a conversation (e.g. after execute_pending)
@@ -293,9 +383,26 @@ Your next step (JSON only):"""
             result = json.dumps({"error": str(e)})
             logger.exception("Tool %s failed", tool_name)
 
-        # Human-in-the-loop: tool returned pending approval
+        # Human-in-the-loop: tool returned pending approval (unless autonomous)
         if isinstance(result, dict) and result.get(PENDING_APPROVAL_KEY):
-            return current, None, result
+            if context.get("autonomous") and tool_name in ("edit_file", "run_terminal"):
+                # Execute immediately and continue the loop
+                args = result.get("args") or {}
+                if tool_name == "edit_file":
+                    result = _execute_edit_file(
+                        context,
+                        args.get("path", ""),
+                        args.get("old_string", ""),
+                        args.get("new_string", ""),
+                    )
+                else:
+                    result = _execute_run_terminal(
+                        context,
+                        args.get("command", ""),
+                        args.get("cwd"),
+                    )
+            else:
+                return current, None, result
 
         current.append({
             "role": "system",

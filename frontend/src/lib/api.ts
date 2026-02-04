@@ -191,6 +191,8 @@ export type AgentContext = {
   codelearn_guidance_url?: string;
   codeiq_enabled?: boolean;
   codeiq_workspace?: string;
+  /** When true, edit_file and run_terminal execute without approval (opt-in). */
+  autonomous?: boolean;
 };
 
 export const agentApi = {

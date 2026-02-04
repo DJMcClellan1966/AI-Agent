@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { agentApi, type PendingApproval, type AgentContext } from '@/lib/api';
-import { Bot, Send, Loader2, ChevronDown, ChevronUp, ShieldCheck, X, Settings2 } from 'lucide-react';
+import { Bot, Send, Loader2, ChevronDown, ChevronUp, ShieldCheck, X, Settings2, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const STORAGE_KEY = 'agent_integrations';
@@ -57,6 +57,7 @@ export default function AgentPage() {
   const [integrations, setIntegrations] = useState<Integrations>(defaultIntegrations);
   const [integrationsLoaded, setIntegrationsLoaded] = useState(false);
   const [showCuddlyOcto, setShowCuddlyOcto] = useState(false);
+  const [autonomous, setAutonomous] = useState(false);
   const conversationEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -116,8 +117,9 @@ export default function AgentPage() {
       base.codeiq_enabled = true;
       base.codeiq_workspace = integrations.codeiq.workspace.trim();
     }
+    if (autonomous) base.autonomous = true;
     return Object.keys(base).length ? base : undefined;
-  }, [workspaceRoot, integrations]);
+  }, [workspaceRoot, integrations, autonomous]);
 
   const sendToAgent = async (messagesForApi: Record<string, string>[]) => {
     setError(null);
@@ -195,15 +197,27 @@ export default function AgentPage() {
               <span className="text-xs text-[#8888a0]">Chat with tools (edit_file, run_terminal require approval)</span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowCuddlyOcto((v) => !v)}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-[#8888a0] hover:text-[#e8e8ed] hover:border-white/20 shrink-0"
-            title="CodeLearn & CodeIQ toggles"
-          >
-            <Settings2 className="h-4 w-4" />
-            {showCuddlyOcto ? 'Hide' : 'Integrations'}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <label className="flex items-center gap-2 cursor-pointer" title="When on, edit_file and run_terminal run without asking for approval.">
+              <Zap className="h-4 w-4 text-[#8888a0]" />
+              <span className="text-xs text-[#8888a0]">Autonomous</span>
+              <input
+                type="checkbox"
+                checked={autonomous}
+                onChange={(e) => setAutonomous(e.target.checked)}
+                className="rounded border-white/20 bg-[#0a0a0f] text-amber-500 focus:ring-amber-500"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowCuddlyOcto((v) => !v)}
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-[#8888a0] hover:text-[#e8e8ed] hover:border-white/20"
+              title="CodeLearn & CodeIQ toggles"
+            >
+              <Settings2 className="h-4 w-4" />
+              {showCuddlyOcto ? 'Hide' : 'Integrations'}
+            </button>
+          </div>
         </div>
 
         {showCuddlyOcto && (

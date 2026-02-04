@@ -73,4 +73,17 @@ Searched `C:\Users\DJMcC\OneDrive\Desktop` for code that could benefit the app. 
 | Synthesis HTML    | Progress steps, question chips    | Low–Med  |
 | Mycelium          | Embeddings + similar projects     | Low      |
 
-Implementing **robust JSON extraction** and **keyword-based spec fallback** in the builder service next.
+---
+
+## Implementation status
+
+| # | Finding | Status | Where |
+|---|---------|--------|--------|
+| 1 | **Keyword-based spec fallback** | Done | `builder_service._default_spec`: `type_hints`, `feature_keywords` when LLM fails or returns bad JSON |
+| 2 | **Robust JSON extraction** | Done | `builder_service._extract_json_object`, `_extract_json_array` (balanced-brace single pass); prompts say “Reply with ONLY a JSON object…” |
+| 2 | **Confidence / needs_clarification** | Not done | Optional; would add to spec and drive follow-up questions when low |
+| 3 | **suggest-question endpoint** | Done | `POST /api/v1/build/suggest-question`; `suggest_questions()` in builder_service |
+| 4 | **Progress steps** | Done | Build page: PROGRESS_STEPS (Understanding intent → Mapping structure → Synthesizing code → Ready); step advances with messages/generating/project |
+| 4 | **Question chips** | Done | Build page: suggested questions from API as clickable buttons; static SUGGESTIONS chips when empty |
+| 5 | **Embeddings + similar projects** | Not done | Low priority; would need embedding column and sentence-transformers |
+| 6 | **api_version / minimal list** | Not done | Low priority; could add to build responses and list projects |
