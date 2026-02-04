@@ -4,13 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
-  Bot,
-  ListTodo,
-  Plug,
+  Sparkles,
   Settings,
   LogOut,
   User,
-  CreditCard,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -20,14 +17,11 @@ import { useState } from 'react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Agents', href: '/agents', icon: Bot },
-  { name: 'Tasks', href: '/tasks', icon: ListTodo },
-  { name: 'Integrations', href: '/integrations', icon: Plug },
+  { name: 'Build', href: '/build', icon: Sparkles },
 ];
 
 const secondaryNavigation = [
   { name: 'Settings', href: '/settings', icon: Settings },
-  { name: 'Subscription', href: '/subscription', icon: CreditCard },
 ];
 
 export function Sidebar() {
@@ -52,9 +46,9 @@ export function Sidebar() {
         {!collapsed && (
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <Bot className="w-5 h-5 text-white" />
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-lg font-bold text-white">AgenticAI</span>
+            <span className="text-lg font-bold text-white">Synthesis</span>
           </Link>
         )}
         <button

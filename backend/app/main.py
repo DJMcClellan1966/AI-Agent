@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from app.core.config import settings
-from app.api.v1 import auth, users, agents, tasks, integrations, subscriptions
+from app.api.v1 import auth, users, agents, tasks, integrations, subscriptions, build
 from app.db.database import engine, Base
 from app.core.logging_config import setup_logging
 
@@ -72,6 +72,7 @@ app.include_router(agents.router, prefix="/api/v1/agents", tags=["Agents"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["Tasks"])
 app.include_router(integrations.router, prefix="/api/v1/integrations", tags=["Integrations"])
 app.include_router(subscriptions.router, prefix="/api/v1/subscriptions", tags=["Subscriptions"])
+app.include_router(build.router, prefix="/api/v1/build", tags=["Build"])
 
 
 # Global exception handler

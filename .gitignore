@@ -14,6 +14,8 @@ venv/
 env/
 ENV/
 build/
+# Keep frontend Build page route (conversational app creation)
+!/frontend/src/app/(app)/build/
 develop-eggs/
 dist/
 downloads/

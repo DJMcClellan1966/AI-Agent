@@ -177,4 +177,15 @@ export const subscriptionsApi = {
   getBillingHistory: () => api.get('/subscriptions/billing-history'),
 };
 
+// Build API (conversational app creation)
+export const buildApi = {
+  generate: (data: { messages: { role: string; content: string }[]; project_name?: string }) =>
+    api.post('/build/generate', data),
+  listProjects: () => api.get('/build/projects'),
+  getProject: (id: number) => api.get(`/build/projects/${id}`),
+  downloadProject: (id: number) =>
+    api.get(`/build/projects/${id}/download`, { responseType: 'blob' }),
+  deleteProject: (id: number) => api.delete(`/build/projects/${id}`),
+};
+
 export default api;

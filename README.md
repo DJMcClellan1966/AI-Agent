@@ -1,6 +1,21 @@
-# AgenticAI - Your AI-Powered Life Assistant
+# Synthesis – Conversational App Creation
 
-A cutting-edge **Agentic AI Life Assistant** that goes beyond simple chatbots to deliver true autonomous task management. This system uses interconnected AI agents to proactively handle daily tasks like booking appointments, negotiating bills, managing emails, and planning routines—all with user permission and oversight.
+Create working web apps by describing them in plain language. Chat about what you want, then generate real HTML/CSS/JS and download the project.
+
+## ✨ Build (main focus)
+
+- **Conversational UI**: Describe your app (e.g. "A habit tracker with streaks"), add more context in chat.
+- **Real code generation**: Backend uses an LLM to turn the conversation into a structured spec, then generates `index.html`, `styles.css`, and `app.js`.
+- **Download**: Get a zip of the generated files and run them locally.
+- **Auth & projects**: Sign up, log in, and your generated projects are stored per user.
+
+The app is focused on this flow; agents, subscriptions, and integrations remain in the codebase but are hidden from the main navigation.
+
+---
+
+# AgenticAI – AI-Powered Life Assistant (legacy)
+
+The codebase also includes an **Agentic AI Life Assistant** (multi-agent system for tasks, email, scheduling, etc.). That functionality is still available via API and code; the UI emphasizes **Build** instead.
 
 ## 🌟 Features
 
