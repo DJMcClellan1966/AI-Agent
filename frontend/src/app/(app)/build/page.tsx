@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { buildApi } from '@/lib/api';
 import {
   Sparkles,
@@ -10,6 +10,7 @@ import {
   Send,
   CheckCircle2,
   Layers,
+  HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -22,10 +23,19 @@ const SUGGESTIONS = [
   'A notes app with tagging',
 ];
 
+const PROGRESS_STEPS = [
+  { id: 1, label: 'Understanding intent' },
+  { id: 2, label: 'Mapping structure' },
+  { id: 3, label: 'Synthesizing code' },
+  { id: 4, label: 'Ready' },
+];
+
 export default function BuildPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [project, setProject] = useState<{
     id: number;
     name: string;
@@ -39,6 +49,32 @@ export default function BuildPage() {
   useEffect(() => {
     conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Fetch suggested follow-up questions when conversation has user messages (and no project yet)
+  const fetchSuggestions = useCallback(async () => {
+    if (messages.length === 0 || project || generating) {
+      setSuggestedQuestions([]);
+      return;
+    }
+    const last = messages[messages.length - 1];
+    if (last?.role !== 'user') return;
+    setLoadingSuggestions(true);
+    try {
+      const { data } = await buildApi.suggestQuestion({
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      });
+      setSuggestedQuestions(data.questions || []);
+    } catch {
+      setSuggestedQuestions([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }, [messages, project, generating]);
+
+  useEffect(() => {
+    const t = setTimeout(fetchSuggestions, 400);
+    return () => clearTimeout(t);
+  }, [fetchSuggestions]);
 
   const sendMessage = (text: string) => {
     const t = text.trim();
@@ -156,6 +192,27 @@ export default function BuildPage() {
               </div>
             </div>
           ))}
+          {suggestedQuestions.length > 0 && messages.length > 0 && !project && !generating && (
+            <div className="flex flex-wrap gap-2 items-center">
+              <HelpCircle className="h-4 w-4 text-[#8888a0] shrink-0" />
+              <span className="text-xs text-[#555568]">Suggestions:</span>
+              {suggestedQuestions.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => sendMessage(q)}
+                  className="px-3 py-2 rounded-lg text-sm bg-[#0a0a0f] border border-white/10 text-[#8888a0] hover:border-indigo-500/50 hover:text-[#e8e8ed] transition-colors text-left"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+          {loadingSuggestions && suggestedQuestions.length === 0 && messages.length > 0 && !project && (
+            <div className="flex items-center gap-2 text-[#555568] text-xs">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Thinking of questions...</span>
+            </div>
+          )}
           <div ref={conversationEndRef} />
         </div>
 
@@ -215,8 +272,45 @@ export default function BuildPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 min-h-0">
+          {/* Progress steps (Synthesis-style) */}
+          <div className="mb-6 space-y-3">
+            {PROGRESS_STEPS.map((step) => {
+              const stepNum = step.id;
+              const currentStep = project ? 4 : generating ? 3 : messages.length > 0 ? 2 : 1;
+              const isComplete = stepNum < currentStep || (stepNum === 4 && !!project);
+              const isActive = stepNum === currentStep;
+              return (
+                <div
+                  key={step.id}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${
+                    isActive
+                      ? 'border-indigo-500/50 bg-indigo-500/10'
+                      : isComplete
+                        ? 'border-white/10 bg-white/5 opacity-90'
+                        : 'border-white/10 bg-white/5 opacity-50'
+                  }`}
+                >
+                  <div
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-semibold ${
+                      isComplete
+                        ? 'border-emerald-500 bg-emerald-500 text-white'
+                        : isActive
+                          ? 'border-indigo-500 text-indigo-400'
+                          : 'border-white/20 text-[#555568]'
+                    }`}
+                  >
+                    {isComplete ? '✓' : step.id}
+                  </div>
+                  <span className={`text-sm ${isActive ? 'text-[#e8e8ed]' : 'text-[#8888a0]'}`}>
+                    {step.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
           {!project && !generating && (
-            <div className="flex flex-col items-center justify-center h-full text-[#555568]">
+            <div className="flex flex-col items-center justify-center py-8 text-[#555568]">
               <Layers className="h-12 w-12 mb-4 opacity-30" />
               <p className="text-sm">Architecture and code will appear here after you generate.</p>
             </div>

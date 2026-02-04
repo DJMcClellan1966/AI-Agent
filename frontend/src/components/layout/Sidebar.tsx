@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Sparkles,
+  Bot,
   Settings,
   LogOut,
   User,
@@ -18,6 +19,7 @@ import { useState } from 'react';
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Build', href: '/build', icon: Sparkles },
+  { name: 'Agent', href: '/agent', icon: Bot },
 ];
 
 const secondaryNavigation = [

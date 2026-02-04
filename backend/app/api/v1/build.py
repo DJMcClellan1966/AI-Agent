@@ -11,6 +11,8 @@ from app.models.project import Project
 from app.core.security import get_current_active_user
 from app.schemas.build import (
     BuildGenerateRequest,
+    SuggestQuestionRequest,
+    SuggestQuestionResponse,
     ProjectResponse,
     ProjectListItem,
 )
@@ -18,9 +20,24 @@ from app.services.builder_service import (
     conversation_to_spec,
     spec_to_code,
     build_conversation_summary,
+    suggest_questions,
 )
 
 router = APIRouter()
+
+
+@router.post("/suggest-question", response_model=SuggestQuestionResponse)
+def suggest_follow_up_questions(
+    body: SuggestQuestionRequest,
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    Suggest 1–2 follow-up questions based on the conversation so far.
+    Makes the flow more conversational before the user hits Generate.
+    """
+    messages = [{"role": m.role, "content": m.content} for m in body.messages]
+    questions = suggest_questions(messages, max_questions=2)
+    return SuggestQuestionResponse(questions=questions)
 
 
 @router.post("/generate", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)

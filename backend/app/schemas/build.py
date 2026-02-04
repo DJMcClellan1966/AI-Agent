@@ -14,6 +14,16 @@ class BuildGenerateRequest(BaseModel):
     project_name: Optional[str] = Field(None, description="Optional project name override")
 
 
+class SuggestQuestionRequest(BaseModel):
+    """Request for suggested follow-up questions."""
+    messages: List[BuildMessage] = Field(..., description="Conversation history so far")
+
+
+class SuggestQuestionResponse(BaseModel):
+    """1–2 suggested follow-up questions for the conversation."""
+    questions: List[str] = Field(..., description="Suggested questions the user could answer")
+
+
 class ProjectSpec(BaseModel):
     """Structured spec extracted from conversation."""
     name: str = "MyApp"

@@ -1,15 +1,27 @@
-# Synthesis – Conversational App Creation
+# Synthesis – Conversational App Creation & Agent
 
-Create working web apps by describing them in plain language. Chat about what you want, then generate real HTML/CSS/JS and download the project.
+Create working web apps by describing them in plain language, and chat with an LLM-powered agent that can read files, edit code, and run commands (with your approval).
 
-## ✨ Build (main focus)
+## ✨ Build (conversational apps)
 
 - **Conversational UI**: Describe your app (e.g. "A habit tracker with streaks"), add more context in chat.
 - **Real code generation**: Backend uses an LLM to turn the conversation into a structured spec, then generates `index.html`, `styles.css`, and `app.js`.
 - **Download**: Get a zip of the generated files and run them locally.
 - **Auth & projects**: Sign up, log in, and your generated projects are stored per user.
 
-The app is focused on this flow; agents, subscriptions, and integrations remain in the codebase but are hidden from the main navigation.
+## 🤖 Agent (Cursor-like assistant)
+
+- **Chat UI**: Use the **Agent** page to talk to an LLM that can call tools: `suggest_questions`, `generate_app`, `read_file`, `list_dir`, `edit_file`, `run_terminal`.
+- **Human-in-the-loop**: File edits and terminal commands require your approval before they run.
+- **Workspace**: Set an optional workspace root so the agent can read/edit files and run commands in your project.
+- **Integrations (Cuddly-Octo)**: Toggle **CodeLearn** (guidance URL) and **CodeIQ** (workspace path) in the Agent Integrations panel. Settings are stored in the browser and can be prefilled from server defaults.
+
+**Optional environment variables** (backend):
+
+- `CODELEARN_GUIDANCE_URL` – Base URL for CodeLearn guidance (avoid/encourage patterns). UI can override via Integrations.
+- `CODEIQ_WORKSPACE` – Default path for CodeIQ CLI (search_code, analyze_code). UI can override via Integrations.
+
+See [docs/AGENT_ROADMAP.md](docs/AGENT_ROADMAP.md) for the roadmap and [docs/CUDDLY_OCTO_BENEFITS.md](docs/CUDDLY_OCTO_BENEFITS.md) for CodeLearn, CodeIQ, and Sentinel.
 
 ---
 
@@ -236,10 +248,9 @@ npm test
 
 ## 📚 Documentation
 
-- [API Documentation](./docs/api.md)
-- [Agent Development Guide](./docs/agents.md)
-- [Integration Guide](./docs/integrations.md)
-- [Deployment Guide](./docs/deployment.md)
+- [Agent roadmap & tools](docs/AGENT_ROADMAP.md)
+- [Cuddly-Octo (CodeLearn, CodeIQ, Sentinel)](docs/CUDDLY_OCTO_BENEFITS.md)
+- [Architecture](ARCHITECTURE.md) · [Quickstart](QUICKSTART.md) · [Setup](SETUP.md)
 
 ## 🤝 Contributing
 

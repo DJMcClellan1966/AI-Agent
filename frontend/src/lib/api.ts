@@ -14,12 +14,16 @@ const api: AxiosInstance = axios.create({
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
-      const authStorage = localStorage.getItem('auth-storage');
-      if (authStorage) {
-        const { state } = JSON.parse(authStorage);
-        if (state?.accessToken) {
-          config.headers.Authorization = `Bearer ${state.accessToken}`;
+      try {
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage) as { state?: { accessToken?: string } };
+          if (parsed?.state?.accessToken) {
+            config.headers.Authorization = `Bearer ${parsed.state.accessToken}`;
+          }
         }
+      } catch {
+        // ignore malformed auth-storage
       }
     }
     return config;
@@ -35,34 +39,23 @@ api.interceptors.response.use(
     
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      
+
       try {
         const authStorage = localStorage.getItem('auth-storage');
-        if (authStorage) {
-          const { state } = JSON.parse(authStorage);
-          if (state?.refreshToken) {
-            const response = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, null, {
-              params: { refresh_token: state.refreshToken }
-            });
-            
-            const newAuthState = {
-              ...state,
-              accessToken: response.data.access_token,
-              refreshToken: response.data.refresh_token,
-            };
-            
-            localStorage.setItem('auth-storage', JSON.stringify({ state: newAuthState }));
-            
-            originalRequest.headers.Authorization = `Bearer ${response.data.access_token}`;
-            return api(originalRequest);
-          }
-        }
-      } catch (refreshError) {
-        // Clear auth and redirect to login
+        if (!authStorage) throw new Error('No auth');
+        const parsed = JSON.parse(authStorage) as { state?: { accessToken?: string; refreshToken?: string } };
+        const state = parsed?.state;
+        if (!state?.refreshToken) throw new Error('No refresh token');
+        const response = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, null, {
+          params: { refresh_token: state.refreshToken },
+        });
+        const newAuthState = { ...state, accessToken: response.data.access_token, refreshToken: response.data.refresh_token };
+        localStorage.setItem('auth-storage', JSON.stringify({ state: newAuthState }));
+        originalRequest.headers.Authorization = `Bearer ${response.data.access_token}`;
+        return api(originalRequest);
+      } catch {
         localStorage.removeItem('auth-storage');
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
+        if (typeof window !== 'undefined') window.location.href = '/login';
       }
     }
     
@@ -179,6 +172,8 @@ export const subscriptionsApi = {
 
 // Build API (conversational app creation)
 export const buildApi = {
+  suggestQuestion: (data: { messages: { role: string; content: string }[] }) =>
+    api.post<{ questions: string[] }>('/build/suggest-question', data),
   generate: (data: { messages: { role: string; content: string }[]; project_name?: string }) =>
     api.post('/build/generate', data),
   listProjects: () => api.get('/build/projects'),
@@ -186,6 +181,31 @@ export const buildApi = {
   downloadProject: (id: number) =>
     api.get(`/build/projects/${id}/download`, { responseType: 'blob' }),
   deleteProject: (id: number) => api.delete(`/build/projects/${id}`),
+};
+
+// Agent API (LLM + tools, human-in-the-loop for edit_file / run_terminal)
+export type PendingApproval = { tool: string; args: Record<string, unknown>; preview: string };
+export type AgentContext = {
+  workspace_root?: string;
+  codelearn_enabled?: boolean;
+  codelearn_guidance_url?: string;
+  codeiq_enabled?: boolean;
+  codeiq_workspace?: string;
+};
+
+export const agentApi = {
+  config: () =>
+    api.get<{ codelearn_guidance_url: string; codeiq_workspace: string }>('/agent/config'),
+  chat: (data: {
+    messages: { role: string; content: string }[];
+    context?: AgentContext;
+  }) => api.post<{ reply: string | null; messages: Record<string, string>[]; pending_approval?: PendingApproval }>('/agent/chat', data),
+  executePending: (data: {
+    messages: { role: string; content: string }[];
+    context?: AgentContext;
+    tool: string;
+    args: Record<string, unknown>;
+  }) => api.post<{ reply: string | null; messages: Record<string, string>[]; pending_approval?: PendingApproval }>('/agent/execute-pending', data),
 };
 
 export default api;

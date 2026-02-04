@@ -91,21 +91,12 @@ JSON:"""
     raw = _generate(llm_type, llm, prompt, max_tokens=600)
     if not raw:
         return _default_spec(messages)
-    # Parse JSON (allow trailing text)
-    raw = raw.strip()
-    for start in ("{", "```json", "```"):
-        if start in raw:
-            idx = raw.find(start)
-            if start != "{":
-                idx = raw.find("{", idx)
-            if idx != -1:
-                raw = raw[idx:]
-                break
-    end = raw.rfind("}")
-    if end != -1:
-        raw = raw[: end + 1]
+    # Robust JSON extraction (handles markdown, trailing text, multiple braces)
+    json_str = _extract_json_object(raw.strip())
+    if not json_str:
+        return _default_spec(messages)
     try:
-        spec = json.loads(raw)
+        spec = json.loads(json_str)
         return {
             "name": spec.get("name", "MyApp"),
             "type": spec.get("type", "app"),
@@ -119,20 +110,83 @@ JSON:"""
         return _default_spec(messages)
 
 
+def _extract_json_object(raw: str) -> str:
+    """Extract first balanced {...} from text (robust to markdown or trailing text). O(n) single pass."""
+    raw = raw.strip()
+    start = raw.find("{")
+    if start == -1:
+        return ""
+    depth = 0
+    for i in range(start, len(raw)):
+        if raw[i] == "{":
+            depth += 1
+        elif raw[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return raw[start : i + 1]
+    # Fallback: first { to last }
+    end = raw.rfind("}")
+    if end != -1 and end > start:
+        return raw[start : end + 1]
+    return ""
+
+
 def _default_spec(messages: List[Dict[str, str]]) -> Dict[str, Any]:
-    """Fallback spec when LLM is unavailable or parse fails."""
+    """Fallback spec when LLM is unavailable or parse fails. Uses keyword detection (from Synthesis + ai-service pattern)."""
     name = "MyApp"
+    all_text = " ".join(m.get("content", "") for m in messages).lower()
     if messages:
         first = messages[0].get("content", "")[: 80]
         words = [w for w in first.split() if len(w) > 2][:2]
         if words:
             name = "".join(w.capitalize() for w in words)
+
+    # Keyword -> app type (from Synthesis analyzeInput + special_project patterns)
+    type_hints = [
+        (["dashboard", "overview", "summary", "day at a glance"], "dashboard"),
+        (["tracker", "tracking", "log", "habit", "streak"], "tracker"),
+        (["note", "notes", "writing", "memo"], "notes"),
+        (["todo", "task", "checklist", "to-do"], "todo"),
+        (["reading", "book", "library"], "library"),
+    ]
+    app_type = "app"
+    for keywords, t in type_hints:
+        if any(k in all_text for k in keywords):
+            app_type = t
+            break
+
+    # Feature keywords (from Synthesis featurePatterns)
+    feature_keywords = [
+        (["track", "tracking", "monitor"], "tracking"),
+        (["list", "collection", "organize"], "list management"),
+        (["remind", "notification", "alert"], "reminders"),
+        (["search", "find", "filter"], "search"),
+        (["chart", "graph", "visual", "stats"], "visualization"),
+        (["dark", "theme", "light mode"], "theming"),
+        (["export", "download", "backup"], "export"),
+        (["tag", "category", "label"], "categorization"),
+        (["streak", "habit", "daily"], "streaks"),
+    ]
+    features = []
+    for keywords, feat in feature_keywords:
+        if any(k in all_text for k in keywords) and feat not in features:
+            features.append(feat)
+    if not features:
+        features = ["list management", "tracking"]
+
+    # Theme
+    theme = "dark"
+    if "light mode" in all_text or "light theme" in all_text:
+        theme = "light"
+    elif "system" in all_text or "preference" in all_text:
+        theme = "system"
+
     return {
         "name": name,
-        "type": "app",
-        "features": ["list management", "tracking"],
+        "type": app_type,
+        "features": features,
         "persistence": "localStorage",
-        "theme": "dark",
+        "theme": theme,
         "ui_complexity": "minimal",
     }
 
@@ -299,3 +353,84 @@ def build_conversation_summary(messages: List[Dict[str, str]], max_len: int = 50
     parts = [m["content"][:200] for m in messages[:5]]
     summary = " | ".join(parts)
     return summary[:max_len] if len(summary) > max_len else summary
+
+
+# Template follow-up questions when LLM is unavailable (from Synthesis question bank)
+_SUGGEST_QUESTION_TEMPLATES = [
+    (
+        ["dashboard", "tracker", "notes", "todo", "habit", "reading", "list"],
+        [
+            "What's the core problem this solves for you?",
+            "Who will use this—just you or others too?",
+            "Should it remember things between sessions (persistent) or session-only?",
+        ],
+    ),
+    (
+        [],  # default
+        [
+            "What's the one thing it must do well?",
+            "Minimal and focused UI, or rich with more features?",
+            "Light mode, dark mode, or follow system preference?",
+        ],
+    ),
+]
+
+
+def suggest_questions(messages: List[Dict[str, str]], max_questions: int = 2) -> List[str]:
+    """
+    Suggest 1–2 follow-up questions to clarify the app idea (CodeLearn-style suggest endpoint).
+    Uses LLM when available; otherwise template based on conversation keywords.
+    """
+    if not messages:
+        return [
+            "What's the core problem this app solves for you?",
+            "Who will use it—just you or others too?",
+        ][:max_questions]
+
+    conv_text = "\n".join(f"{m['role'].upper()}: {m['content']}" for m in messages)
+    all_text = " ".join(m["content"] for m in messages).lower()
+
+    llm_type, llm = _get_llm()
+    if llm:
+        prompt = f"""You are a product analyst helping someone describe a web app idea. Based on this short conversation, suggest exactly {max_questions} short follow-up questions to clarify what they want. Questions should be practical (e.g. who will use it, persistence, must-have feature). Reply with ONLY a JSON array of strings, e.g. ["Question one?", "Question two?"]. No other text.
+
+Conversation:
+{conv_text}
+
+JSON array of {max_questions} questions:"""
+        raw = _generate(llm_type, llm, prompt, max_tokens=200)
+        if raw:
+            json_str = _extract_json_array(raw)
+            if json_str:
+                try:
+                    arr = json.loads(json_str)
+                    if isinstance(arr, list):
+                        return [str(q) for q in arr[:max_questions] if q]
+                except json.JSONDecodeError:
+                    pass
+
+    # Template fallback: pick questions based on keywords
+    for keywords, questions in _SUGGEST_QUESTION_TEMPLATES:
+        if not keywords or any(k in all_text for k in keywords):
+            return questions[:max_questions]
+    return _SUGGEST_QUESTION_TEMPLATES[-1][1][:max_questions]
+
+
+def _extract_json_array(raw: str) -> str:
+    """Extract first balanced [...] from text."""
+    raw = raw.strip()
+    start = raw.find("[")
+    if start == -1:
+        return ""
+    depth = 0
+    for i in range(start, len(raw)):
+        if raw[i] == "[":
+            depth += 1
+        elif raw[i] == "]":
+            depth -= 1
+            if depth == 0:
+                return raw[start : i + 1]
+    end = raw.rfind("]")
+    if end != -1 and end > start:
+        return raw[start : end + 1]
+    return ""

@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.production
+.env.development
 .env.*.local
 
 # Python
@@ -45,13 +46,15 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 
-# IDE
+# IDE & editor
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~
 .DS_Store
+Thumbs.db
 
 # Database
 *.sqlite
@@ -73,3 +76,5 @@ htmlcov/
 .cache/
 temp/
 tmp/
+*.bak
+*.orig
