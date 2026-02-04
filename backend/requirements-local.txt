@@ -1,0 +1,63 @@
+# Local LLM Requirements (GPT4All optimization)
+
+# Core dependencies (keep existing)
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+sqlalchemy==2.0.25
+alembic==1.13.1
+psycopg2-binary==2.9.9
+redis==5.0.1
+celery==5.3.6
+pydantic==2.5.3
+pydantic-settings==2.1.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+aiofiles==23.2.1
+
+# LOCAL LLM OPTIONS (choose one or more):
+
+# Option 1: GPT4All (easiest, CPU optimized)
+gpt4all==2.0.2
+
+# Option 2: Ollama Python client
+ollama==0.1.6
+
+# Option 3: LangChain with local models
+langchain==0.1.4
+langchain-community==0.0.16
+llama-cpp-python==0.2.32  # For GGUF models
+
+# Option 4: Hugging Face Transformers (GPU recommended)
+# transformers==4.36.2
+# torch==2.1.2
+# accelerate==0.26.1
+
+# Optional: Optimizations
+# sentence-transformers==2.3.1  # For embeddings
+# ctransformers==0.2.27  # C++ optimized inference
+# bitsandbytes==0.41.3  # Quantization support
+
+# Email & Calendar (keep existing)
+imap-tools==1.5.0
+google-auth==2.27.0
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
+google-api-python-client==2.115.0
+
+# Payment & Billing
+stripe==8.0.0
+
+# Utilities
+httpx==0.26.0
+python-dotenv==1.0.0
+pyyaml==6.0.1
+jinja2==3.1.3
+email-validator==2.1.0
+
+# Testing & Development
+pytest==7.4.4
+pytest-asyncio==0.23.3
+pytest-cov==4.1.0
+black==24.1.1
+ruff==0.1.14

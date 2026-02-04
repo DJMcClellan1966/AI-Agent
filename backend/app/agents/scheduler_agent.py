@@ -105,7 +105,7 @@ class SchedulerAgent(BaseAgent):
         Suggest 3 optimal time slots."""
         
         try:
-            suggestions = self.llm.predict(prompt)
+            suggestions = self._generate_text(prompt)
             
             return {
                 "success": True,

@@ -90,7 +90,7 @@ class CoordinatorAgent(BaseAgent):
         Return the task IDs in priority order (most important first)."""
         
         try:
-            result = self.llm.predict(prompt)
+            result = self._generate_text(prompt)
             
             # Parse result and reorder tasks
             # Simplified: return tasks as-is
@@ -135,7 +135,7 @@ class CoordinatorAgent(BaseAgent):
         Provide reasoning."""
         
         try:
-            resolution = self.llm.predict(prompt)
+            resolution = self._generate_text(prompt)
             return {
                 "success": True,
                 "resolution": resolution,

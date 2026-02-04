@@ -1,300 +1,176 @@
-# 🚀 Quick Start Guide
+# Quick Start Guide
 
-Get your Agentic AI Life Assistant up and running in minutes!
+Get your AgenticAI Life Assistant up and running in minutes!
 
-## ⚡ Option 1: Docker (Fastest - Recommended)
+## Prerequisites
 
-### Prerequisites
-- Docker Desktop installed
-- OpenAI API key
+- **Node.js 18+** - For the frontend
+- **Python 3.11+** - For the backend
+- **Docker & Docker Compose** (optional but recommended)
 
-### Steps
+## Option 1: Quick Start with Docker (Recommended)
 
-1. **Clone/Navigate to project**
-   ```bash
-   cd AI-Agent
-   ```
+```bash
+# 1. Clone and navigate to the project
+cd AI-Agent
 
-2. **Set up environment**
-   ```bash
-   # Copy environment file
-   copy .env.example .env
-   
-   # Edit .env and add your OpenAI API key
-   notepad .env
-   # Add: OPENAI_API_KEY=sk-your-key-here
-   ```
+# 2. Copy environment files
+cp .env.example .env
+cp frontend/.env.example frontend/.env.local
 
-3. **Start everything**
-   ```bash
-   docker-compose up
-   ```
-   
-   That's it! Wait for services to start (2-3 minutes first time)
+# 3. Edit .env and add your OpenAI API key
+# OPENAI_API_KEY=sk-your-key-here
 
-4. **Access the app**
-   - **Frontend**: http://localhost:3000
-   - **Backend API**: http://localhost:8000
-   - **API Docs**: http://localhost:8000/api/docs
+# 4. Start everything with Docker
+docker-compose up
 
-5. **Create an account**
-   - Go to http://localhost:3000
-   - Sign up with email and password
-   - Start creating agents!
+# 5. Open your browser
+# Frontend: http://localhost:3000
+# API Docs: http://localhost:8000/api/docs
+```
 
----
-
-## 💻 Option 2: Manual Setup (More Control)
-
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL 15+ running locally
-- Redis running locally
+## Option 2: Manual Setup
 
 ### Backend Setup
 
-1. **Terminal 1 - Backend API**
-   ```bash
-   # Run the setup script
-   start-backend.bat
-   ```
-   
-   Or manually:
-   ```bash
-   cd backend
-   python -m venv venv
-   venv\Scripts\activate
-   pip install -r requirements.txt
-   
-   # Copy and edit .env
-   copy .env.example .env
-   notepad .env  # Add your API keys
-   
-   # Start backend
-   uvicorn app.main:app --reload --port 8000
-   ```
+```bash
+# 1. Navigate to backend
+cd backend
 
-2. **Terminal 2 - Celery Worker**
-   ```bash
-   # Run the worker script
-   start-worker.bat
-   ```
-   
-   Or manually:
-   ```bash
-   cd backend
-   venv\Scripts\activate
-   celery -A app.agents.executor worker --loglevel=info -P solo
-   ```
+# 2. Create virtual environment
+python -m venv venv
 
-### Frontend Setup
+# 3. Activate virtual environment
+# Windows:
+venv\Scripts\activate
+# macOS/Linux:
+source venv/bin/activate
 
-3. **Terminal 3 - Frontend**
-   ```bash
-   # Run the setup script
-   start-frontend.bat
-   ```
-   
-   Or manually:
-   ```bash
-   cd frontend
-   npm install
-   copy .env.example .env.local
-   npm run dev
-   ```
+# 4. Install dependencies
+pip install -r requirements.txt
 
-### Access
-- **Frontend**: http://localhost:3000
-- **Backend**: http://localhost:8000
-- **API Docs**: http://localhost:8000/api/docs
+# 5. Copy environment file
+cd ..
+cp .env.example .env
+# Edit .env and add your API keys
 
----
+# 6. Start the backend
+cd backend
+uvicorn app.main:app --reload --port 8000
+```
 
-## 🎯 First Steps After Setup
+### Frontend Setup (in a new terminal)
 
-### 1. Create Your Account
-1. Go to http://localhost:3000
-2. Click "Sign Up"
-3. Enter your details
-4. Log in
+```bash
+# 1. Navigate to frontend
+cd frontend
+
+# 2. Install dependencies
+npm install
+
+# 3. Copy environment file
+cp .env.example .env.local
+
+# 4. Start the frontend
+npm run dev
+```
+
+### Worker Setup (in a third terminal, optional)
+
+```bash
+# For async task processing
+cd backend
+celery -A app.worker worker --loglevel=info -P solo
+```
+
+## Using the App
+
+### 1. Create an Account
+- Go to http://localhost:3000
+- Click "Sign up for free"
+- Enter your details
 
 ### 2. Create Your First Agent
+- Click "Agents" in the sidebar
+- Click "Create Agent"
+- Choose an agent type (Email, Scheduler, Finance, etc.)
+- Configure permissions
+- Click "Create Agent"
 
-**Email Agent Example:**
-1. Navigate to "Agents" page
-2. Click "Create Agent"
-3. Select "Email" as agent type
-4. Name it: "Email Manager"
-5. Configure:
-   - ✅ Requires approval: ON (recommended)
-   - ❌ Can execute autonomously: OFF (for now)
-   - Max daily tasks: 10
-6. Click "Create"
+### 3. Monitor Tasks
+- Agents will create tasks as they work
+- Review pending tasks in the "Tasks" section
+- Approve or reject tasks as needed
 
-**Scheduler Agent Example:**
-1. Create another agent
-2. Select "Scheduler" type
-3. Name it: "Calendar Assistant"
-4. Set permissions for calendar access
-5. Save
+### 4. Connect Integrations
+- Go to "Integrations"
+- Connect your email, calendar, etc.
+- Agents will use these to automate your life!
 
-### 3. Review Agent Suggestions
+## Environment Variables
 
-Agents will start analyzing patterns and suggesting tasks. Check:
-- Dashboard for overview
-- Tasks page for pending approvals
-- Approve or reject suggested actions
-
-### 4. Connect Integrations (Coming Soon)
-
-Future integrations:
-- Gmail/Outlook
-- Google Calendar
-- Banking APIs
-
----
-
-## 📝 Example Use Cases
-
-### Use Case 1: Email Management
-1. Email Agent analyzes your inbox
-2. Categorizes emails (urgent, important, spam)
-3. Drafts responses to common emails
-4. Schedules follow-ups
-5. You review and approve
-
-### Use Case 2: Appointment Booking
-1. Scheduler Agent monitors your calendar
-2. Finds conflicts
-3. Suggests rescheduling options
-4. Books appointments when you approve
-5. Sends reminders
-
-### Use Case 3: Bill Negotiation
-1. Finance Agent tracks your bills
-2. Identifies high costs
-3. Prepares negotiation scripts
-4. You review and approve
-5. Agent helps you save money
-
----
-
-## 🛠️ Configuration
-
-### Environment Variables
-
-**Backend (.env):**
+### Required
 ```env
-# Required
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/agentic_ai
-REDIS_URL=redis://localhost:6379
+# OpenAI API Key (for LLM capabilities)
 OPENAI_API_KEY=sk-your-key-here
-SECRET_KEY=your-secret-key-change-this
 
-# Optional
-ANTHROPIC_API_KEY=sk-ant-your-key-here
-STRIPE_SECRET_KEY=sk_test_your-key-here
+# Database (PostgreSQL)
+DATABASE_URL=postgresql://user:pass@localhost:5432/agentic_ai
+
+# Redis (for task queue)
+REDIS_URL=redis://localhost:6379
+
+# JWT Secret (generate a secure random string)
+SECRET_KEY=your-super-secret-key-here
 ```
 
-**Frontend (.env.local):**
+### Optional
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+# Anthropic API (alternative LLM)
+ANTHROPIC_API_KEY=sk-ant-your-key
+
+# Stripe (for payments)
+STRIPE_SECRET_KEY=sk_test_your-key
+STRIPE_WEBHOOK_SECRET=whsec_your-secret
+
+# Google OAuth (for Gmail/Calendar)
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
 ```
+
+## Default Credentials
+
+When running locally, you can create any account. The free tier includes:
+- 2 AI agents
+- 50 tasks per month
+- Basic features
+
+## Troubleshooting
+
+### Backend won't start
+- Check Python version: `python --version` (need 3.11+)
+- Make sure virtual environment is activated
+- Check that all dependencies installed: `pip install -r requirements.txt`
+
+### Frontend won't start
+- Check Node version: `node --version` (need 18+)
+- Delete node_modules and reinstall: `rm -rf node_modules && npm install`
+
+### Database errors
+- Make sure PostgreSQL is running
+- Check DATABASE_URL in .env
+
+### Task queue not working
+- Make sure Redis is running
+- Check REDIS_URL in .env
+- Start the Celery worker
+
+## Next Steps
+
+- Read the [full documentation](./PROJECT_OVERVIEW.md)
+- Explore the [API docs](http://localhost:8000/api/docs)
+- Check out the [architecture guide](./ARCHITECTURE.md)
 
 ---
 
-## ✅ Verify Installation
-
-### Check Backend
-```bash
-# Test health endpoint
-curl http://localhost:8000/health
-
-# Should return:
-# {"status":"healthy","version":"1.0.0","service":"agentic-ai-api"}
-```
-
-### Check Frontend
-- Open http://localhost:3000
-- Should see login/signup page
-
-### Check API Docs
-- Open http://localhost:8000/api/docs
-- Should see Swagger UI with all endpoints
-
----
-
-## 🐛 Troubleshooting
-
-### Problem: Port already in use
-**Solution:**
-```bash
-# Find and kill process on port 8000
-netstat -ano | findstr :8000
-taskkill /PID <process_id> /F
-
-# Or change ports in docker-compose.yml or .env
-```
-
-### Problem: Database connection error
-**Solution:**
-```bash
-# Make sure PostgreSQL is running
-# Check connection string in .env
-# If using Docker:
-docker-compose up -d postgres
-```
-
-### Problem: OpenAI API error
-**Solution:**
-- Verify API key in .env is correct
-- Check you have credits at https://platform.openai.com/account/billing
-- Restart backend after updating .env
-
-### Problem: Frontend can't connect to backend
-**Solution:**
-- Ensure backend is running on port 8000
-- Check NEXT_PUBLIC_API_URL in frontend/.env.local
-- Check browser console for CORS errors
-
-### Problem: Celery worker not starting on Windows
-**Solution:**
-```bash
-# Use -P solo flag for Windows
-celery -A app.agents.executor worker --loglevel=info -P solo
-```
-
----
-
-## 📚 Next Steps
-
-1. **Read the docs**: Check [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md) for architecture details
-2. **Explore agents**: See [backend/app/agents/](./backend/app/agents/) for agent implementations
-3. **Try the API**: Use http://localhost:8000/api/docs to test endpoints
-4. **Customize**: Modify agent behavior in the agent files
-5. **Deploy**: See deployment guide for production setup
-
----
-
-## 🆘 Need Help?
-
-- **Documentation**: Check [SETUP.md](./SETUP.md) for detailed setup
-- **Architecture**: See [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md)
-- **API Reference**: http://localhost:8000/api/docs
-- **Issues**: Open an issue on GitHub
-
----
-
-## 🎉 You're Ready!
-
-Your Agentic AI Life Assistant is now running. Start by:
-
-1. ✅ Creating your account
-2. ✅ Setting up your first agent
-3. ✅ Reviewing agent suggestions
-4. ✅ Approving or rejecting tasks
-5. ✅ Letting AI handle the rest!
-
-**Enjoy your AI-powered productivity boost!** 🚀
+**Need help?** Open an issue on GitHub or check the documentation.

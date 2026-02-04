@@ -75,7 +75,7 @@ class FinanceAgent(BaseAgent):
         Provide a professional negotiation template."""
         
         try:
-            script = self.llm.predict(prompt)
+            script = self._generate_text(prompt)
             
             # Request approval for negotiation
             task_id = await self.request_approval({

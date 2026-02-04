@@ -1,43 +1,50 @@
-# Agentic AI Life Assistant
+# AgenticAI - Your AI-Powered Life Assistant
 
-A proactive AI agent system that autonomously handles daily tasks including booking appointments, negotiating bills, managing emails, and planning routines using interconnected AI agents.
+A cutting-edge **Agentic AI Life Assistant** that goes beyond simple chatbots to deliver true autonomous task management. This system uses interconnected AI agents to proactively handle daily tasks like booking appointments, negotiating bills, managing emails, and planning routines—all with user permission and oversight.
 
 ## 🌟 Features
 
-- **Multi-Agent System**: Specialized AI agents working together
-- **Proactive Task Management**: Agents predict needs and suggest actions
-- **Permission-Based Actions**: User control over agent actions
-- **Email Management**: Smart email sorting, responses, and follow-ups
+- **Multi-Agent System**: Specialized AI agents (Email, Scheduler, Finance, Planning, Coordinator) working together
+- **Proactive Task Management**: Agents predict your needs and suggest actions before you ask
+- **Permission-Based Actions**: Full user control with approval workflows
+- **Email Management**: Smart email sorting, automated responses, and follow-up scheduling
 - **Appointment Booking**: Automated scheduling with calendar integration
-- **Bill Negotiation**: AI-powered negotiation for better rates
+- **Bill Negotiation**: AI-powered negotiation for better rates on your services
 - **Routine Planning**: Personalized daily/weekly routine optimization
-- **Integration Hub**: Connect with calendars, email, banking, and more
+- **Integration Hub**: Connect with Gmail, Outlook, Google Calendar, banking APIs, and more
+- **Modern Dashboard**: Beautiful, responsive UI to monitor all agent activities
+- **Subscription Tiers**: Free, Pro, and Premium plans with Stripe integration
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│         Frontend (Next.js)              │
-│  - Dashboard                            │
-│  - Agent Management                     │
-│  - Task Approval UI                     │
-└─────────────┬───────────────────────────┘
+┌─────────────────────────────────────────────┐
+│         Frontend (Next.js 14)               │
+│  - Modern Dashboard with Stats              │
+│  - Agent Management & Configuration         │
+│  - Task Approval Workflow                   │
+│  - Integration Hub                          │
+│  - Settings & User Profile                  │
+│  - Subscription Management                  │
+└─────────────┬───────────────────────────────┘
+              │ REST API
+┌─────────────▼───────────────────────────────┐
+│      Backend API (FastAPI)                  │
+│  - Authentication (JWT)                     │
+│  - Agent CRUD & Orchestration               │
+│  - Task Queue & Approval System             │
+│  - Permission Manager                       │
+│  - Subscription/Payment (Stripe)            │
+└─────────────┬───────────────────────────────┘
               │
-┌─────────────▼───────────────────────────┐
-│      Backend API (FastAPI)              │
-│  - Agent Orchestrator                   │
-│  - Task Queue                           │
-│  - Permission Manager                   │
-└─────────────┬───────────────────────────┘
-              │
-┌─────────────▼───────────────────────────┐
-│        Agent Framework                  │
-│  - Email Agent                          │
-│  - Scheduler Agent                      │
-│  - Finance Agent                        │
-│  - Planning Agent                       │
-│  - Coordinator Agent                    │
-└─────────────────────────────────────────┘
+┌─────────────▼───────────────────────────────┐
+│        Agent Framework (LangChain)          │
+│  📧 Email Agent - Sort, draft, schedule     │
+│  📅 Scheduler Agent - Book, optimize        │
+│  💰 Finance Agent - Track, negotiate        │
+│  📋 Planning Agent - Routines, priorities   │
+│  🎯 Coordinator Agent - Orchestrate all     │
+└─────────────────────────────────────────────┘
 ```
 
 ## 🚀 Tech Stack

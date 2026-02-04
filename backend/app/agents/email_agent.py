@@ -45,7 +45,7 @@ class EmailAgent(BaseAgent):
         ])
         
         try:
-            response = self.llm.predict(
+            response = self._generate_text(
                 f"{system_prompt}\n\nEmails:\n{email_summaries}"
             )
             
@@ -111,7 +111,7 @@ class EmailAgent(BaseAgent):
         Write a concise, professional response."""
         
         try:
-            draft = self.llm.predict(prompt)
+            draft = self._generate_text(prompt)
             return {
                 "success": True,
                 "draft": draft,

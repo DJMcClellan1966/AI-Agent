@@ -25,6 +25,15 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4-turbo-preview"
     ANTHROPIC_MODEL: str = "claude-3-opus-20240229"
     
+    # Local LLM Settings
+    USE_LOCAL_LLM: bool = False  # Set to True to use local models
+    LOCAL_LLM_BACKEND: str = "ollama"  # Options: ollama, gpt4all, llama-cpp
+    LOCAL_MODEL_NAME: str = "mistral:7b"  # Model to use
+    OLLAMA_HOST: str = "http://localhost:11434"
+    LOCAL_MODEL_MAX_TOKENS: int = 500
+    LOCAL_MODEL_TEMPERATURE: float = 0.7
+    LOCAL_MODEL_THREADS: int = 4  # CPU threads
+    
     # Authentication
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7

@@ -6,8 +6,9 @@ import { Providers } from '@/components/providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Agentic AI Life Assistant',
-  description: 'Proactive AI agent system for autonomous task management',
+  title: 'AgenticAI - Your AI-Powered Life Assistant',
+  description: 'Autonomous AI agents that handle your daily tasks - email management, scheduling, bill negotiation, and more.',
+  keywords: ['AI', 'automation', 'productivity', 'agents', 'email', 'scheduling'],
 };
 
 export default function RootLayout({
@@ -16,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>{children}</Providers>
       </body>
