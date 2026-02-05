@@ -350,6 +350,41 @@ def _get_workspace_context_block(context: Dict[str, Any], messages: List[Dict[st
     return "\n".join(lines) if len(lines) > 1 else ""
 
 
+def _build_system_prompt(
+    context: Dict[str, Any],
+    tool_descriptions: str,
+    guidance_block: str,
+    workspace_block: str,
+    approval_note: str,
+) -> str:
+    """Build system prompt. Use context.agent_style == 'opus_like' for reasoning-first, strict JSON behavior."""
+    if context.get("agent_style") == "opus_like":
+        return f"""You are a precise coding and product assistant. Think step-by-step, then act. You have access to these tools:
+
+{tool_descriptions}
+{guidance_block}{workspace_block}
+
+Rules:
+- Output valid JSON only. No markdown, no explanation outside the JSON.
+- Before every action: set "thought" to one short sentence explaining what you are doing and why.
+- To call a tool: {{"thought": "...", "tool": "tool_name", "args": {{...}}}}
+  Use "messages" for the current conversation when a tool needs it (list of {{"role": "user"|"system", "content": "..."}}).
+- To reply to the user and finish: {{"thought": "...", "reply": "your reply text"}}
+- Keep thoughts and replies short. Prefer one tool call per step.{approval_note}"""
+    # Default style
+    return f"""You are a helpful coding and product assistant. You have access to these tools:
+
+{tool_descriptions}
+{guidance_block}{workspace_block}
+
+Reply with JSON only. Either:
+1) To call a tool: {{"thought": "brief reasoning", "tool": "tool_name", "args": {{...}}}}
+   Use "messages" for the current conversation when a tool needs it (list of {{"role": "user"|"system", "content": "..."}}).
+2) To reply to the user and finish: {{"thought": "brief reasoning", "reply": "your reply text"}}
+
+Be concise.{approval_note}"""
+
+
 def run_loop(
     messages: List[Dict[str, str]],
     context: Optional[Dict[str, Any]] = None,
@@ -378,21 +413,14 @@ def run_loop(
     if context.get("autonomous"):
         approval_note = " Autonomous mode: edit_file and run_terminal will run immediately without asking."
 
-    system = f"""You are a helpful coding and product assistant. You have access to these tools:
-
-{tool_descriptions}
-{guidance_block}{workspace_block}
-
-Reply with JSON only. Either:
-1) To call a tool: {{"thought": "brief reasoning", "tool": "tool_name", "args": {{...}}}}
-   Use "messages" for the current conversation when a tool needs it (list of {{"role": "user"|"system", "content": "..."}}).
-2) To reply to the user and finish: {{"thought": "brief reasoning", "reply": "your reply text"}}
-
-Be concise.{approval_note}"""
+    system = _build_system_prompt(
+        context, tool_descriptions, guidance_block, workspace_block, approval_note
+    )
 
     current = list(messages)
     # Avoid duplicating system prompt when continuing a conversation (e.g. after execute_pending)
-    if not current or current[0].get("role") != "system" or "You are a helpful coding" not in (current[0].get("content") or ""):
+    first_content = (current[0].get("content") or "") if current else ""
+    if not current or current[0].get("role") != "system" or "Reply with JSON only" not in first_content:
         current.insert(0, {"role": "system", "content": system})
 
     llm_type, llm = _get_llm()

@@ -21,7 +21,7 @@ Create working web apps by describing them in plain language, and chat with an L
 - `CODELEARN_GUIDANCE_URL` – Base URL for CodeLearn guidance (avoid/encourage patterns). UI can override via Integrations.
 - `CODEIQ_WORKSPACE` – Default path for CodeIQ CLI (search_code, analyze_code). UI can override via Integrations.
 
-See [docs/AGENT_ROADMAP.md](docs/AGENT_ROADMAP.md) for the roadmap and [docs/CUDDLY_OCTO_BENEFITS.md](docs/CUDDLY_OCTO_BENEFITS.md) for CodeLearn, CodeIQ, and Sentinel.
+See [docs/AGENT_ROADMAP.md](docs/AGENT_ROADMAP.md) for the roadmap, [docs/OPUS_LIKE_AGENT.md](docs/OPUS_LIKE_AGENT.md) for building an Opus-like agent (with any model), and [docs/CUDDLY_OCTO_BENEFITS.md](docs/CUDDLY_OCTO_BENEFITS.md) for CodeLearn, CodeIQ, and Sentinel.
 
 ---
 
@@ -249,6 +249,7 @@ npm test
 ## 📚 Documentation
 
 - [Agent roadmap & tools](docs/AGENT_ROADMAP.md)
+- [Opus-like agent (any model)](docs/OPUS_LIKE_AGENT.md)
 - [Cuddly-Octo (CodeLearn, CodeIQ, Sentinel)](docs/CUDDLY_OCTO_BENEFITS.md)
 - [Architecture](ARCHITECTURE.md) · [Quickstart](QUICKSTART.md) · [Setup](SETUP.md)
 

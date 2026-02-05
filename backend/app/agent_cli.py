@@ -37,6 +37,12 @@ def main() -> None:
         action="store_true",
         help="Disable injecting workspace search context into the agent prompt.",
     )
+    parser.add_argument(
+        "--agent-style",
+        choices=["default", "opus_like"],
+        default="default",
+        help="Agent style: 'opus_like' = reasoning-first, strict JSON (see docs/OPUS_LIKE_AGENT.md).",
+    )
     args = parser.parse_args()
 
     context = {"workspace_root": args.workspace.strip() or None}
@@ -53,6 +59,9 @@ def main() -> None:
         print("Autonomous mode: edits and commands run without approval.", file=sys.stderr)
     if args.no_search_context:
         context["inject_search_context"] = False
+    if args.agent_style == "opus_like":
+        context["agent_style"] = "opus_like"
+        print("Agent style: opus_like (reasoning-first, strict JSON).", file=sys.stderr)
 
     messages: list = []
     print("\nAgent CLI (same kernel as web). Type a message and press Enter. Empty line to exit.\n", file=sys.stderr)
