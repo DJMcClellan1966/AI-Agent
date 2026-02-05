@@ -63,7 +63,18 @@ class Settings(BaseSettings):
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_PER_HOUR: int = 1000
-    
+    RATE_LIMIT_AGENT_CHAT_PER_MINUTE: int = 30
+    RATE_LIMIT_BUILD_GENERATE_PER_MINUTE: int = 10
+
+    # Request limits
+    REQUEST_BODY_MAX_BYTES: int = 1_048_576  # 1MB
+
+    # LLM
+    LLM_REQUEST_TIMEOUT_SECONDS: int = 120
+
+    # Security: workspace allowlist (empty = no restriction; else workspace_root must be under one of these)
+    WORKSPACE_ALLOWED_ROOTS: List[str] = []
+
     class Config:
         env_file = ".env"
         case_sensitive = True

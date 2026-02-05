@@ -5,12 +5,17 @@ Uses the same LLM config as the rest of the app (OpenAI, Anthropic, or local).
 import json
 import logging
 import re
+import time
 from typing import Dict, Any, List
 
 from app.core.config import settings
 from app.core.local_llm import get_local_llm
 
 logger = logging.getLogger(__name__)
+
+LLM_MAX_RETRIES = 3
+LLM_RETRY_BACKOFF_BASE = 1.0  # seconds
+
 
 # Try LangChain imports (optional for local-only setups)
 try:
@@ -26,7 +31,8 @@ except ImportError:
 
 
 def _get_llm():
-    """Return LLM instance (LangChain or local)."""
+    """Return LLM instance (LangChain or local) with timeout from config."""
+    timeout = getattr(settings, "LLM_REQUEST_TIMEOUT_SECONDS", 120)
     if settings.USE_LOCAL_LLM:
         local = get_local_llm()
         if local.is_available():
@@ -39,30 +45,38 @@ def _get_llm():
             model=settings.OPENAI_MODEL,
             temperature=0.5,
             openai_api_key=settings.OPENAI_API_KEY,
+            timeout=timeout,
         ))
     if settings.ANTHROPIC_API_KEY:
         return ("anthropic", ChatAnthropic(
             model=settings.ANTHROPIC_MODEL,
             temperature=0.5,
             anthropic_api_key=settings.ANTHROPIC_API_KEY,
+            timeout=timeout,
         ))
     return (None, None)
 
 
 def _generate(llm_type: str, llm, prompt: str, max_tokens: int = 2000) -> str:
-    """Generate text from prompt. llm_type is 'local', 'openai', or 'anthropic'."""
+    """Generate text from prompt with retries on transient failures."""
     if not llm:
         return ""
-    try:
-        if llm_type == "local":
-            return llm.generate(prompt, max_tokens=max_tokens)
-        # LangChain
-        if hasattr(llm, "invoke"):
-            return llm.invoke(prompt).content
-        return llm.predict(prompt)
-    except Exception as e:
-        logger.error(f"LLM generate failed: {e}")
-        return ""
+    last_error = None
+    for attempt in range(LLM_MAX_RETRIES):
+        try:
+            if llm_type == "local":
+                return llm.generate(prompt, max_tokens=max_tokens)
+            if hasattr(llm, "invoke"):
+                return llm.invoke(prompt).content
+            return llm.predict(prompt)
+        except Exception as e:
+            last_error = e
+            logger.warning("LLM generate attempt %s failed: %s", attempt + 1, e)
+            if attempt < LLM_MAX_RETRIES - 1:
+                sleep = LLM_RETRY_BACKOFF_BASE * (2 ** attempt)
+                time.sleep(sleep)
+    logger.error("LLM generate failed after %s retries: %s", LLM_MAX_RETRIES, last_error)
+    return ""
 
 
 def conversation_to_spec(messages: List[Dict[str, str]]) -> Dict[str, Any]:

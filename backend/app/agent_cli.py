@@ -76,7 +76,11 @@ def main() -> None:
             break
 
         messages.append({"role": "user", "content": line})
-        updated, reply, pending = run_loop(messages=messages, context=context, max_turns=8)
+        updated, reply, pending, error_code = run_loop(messages=messages, context=context, max_turns=8)
+        if error_code:
+            print(f"\nAgent error ({error_code}): {reply}\n", file=sys.stderr)
+            messages = updated
+            continue
 
         if pending and not context.get("autonomous"):
             tool = pending.get("tool", "?")
@@ -99,7 +103,7 @@ def main() -> None:
                     print(f"\nAgent: {reply}\n")
             else:
                 messages = updated + [{"role": "system", "content": "User declined the tool call."}]
-                updated2, reply, _ = run_loop(messages=messages, context=context, max_turns=3)
+                updated2, reply, _, _ = run_loop(messages=messages, context=context, max_turns=3)
                 messages = updated2
                 if reply:
                     print(f"\nAgent: {reply}\n")

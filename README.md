@@ -250,6 +250,7 @@ npm test
 
 - [Agent roadmap & tools](docs/AGENT_ROADMAP.md)
 - [Opus-like agent (any model)](docs/OPUS_LIKE_AGENT.md)
+- [Robustness (validation, health, errors)](docs/ROBUSTNESS.md)
 - [Cuddly-Octo (CodeLearn, CodeIQ, Sentinel)](docs/CUDDLY_OCTO_BENEFITS.md)
 - [Architecture](ARCHITECTURE.md) · [Quickstart](QUICKSTART.md) · [Setup](SETUP.md)
 

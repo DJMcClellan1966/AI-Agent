@@ -8,8 +8,10 @@ import os
 import re
 import difflib
 import subprocess
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
+from app.core.config import settings
 from app.services.builder_service import (
     _get_llm,
     _generate,
@@ -54,6 +56,42 @@ def _safe_path(root: str, path: str) -> Optional[str]:
     if not full.startswith(os.path.abspath(root)):
         return None
     return full
+
+
+def _validate_workspace_allowed(workspace_root: str) -> bool:
+    """If WORKSPACE_ALLOWED_ROOTS is set, workspace_root must be under one of them."""
+    allowed = getattr(settings, "WORKSPACE_ALLOWED_ROOTS", None) or []
+    if not allowed:
+        return True
+    root_abs = os.path.abspath(workspace_root)
+    for allowed_dir in allowed:
+        if not allowed_dir:
+            continue
+        if root_abs.startswith(os.path.abspath(allowed_dir)):
+            return True
+    return False
+
+
+# Commands that are always blocked (dangerous patterns)
+_BLOCKED_COMMAND_PATTERNS = [
+    r"rm\s+-rf\s+/?\s*$",  # rm -rf /
+    r"rm\s+-rf\s+/",
+    r":\s*\(\s*\)\s*\{\s*:\s*\|",  # fork bomb
+    r"\|\s*sh\s*$",  # | sh
+    r"\|\s*bash\s*$",
+    r"curl\s+.*\s+\|\s*sh",
+    r"wget\s+.*\s+\|\s*sh",
+    r">\s*/dev/sd[a-z]",  # write to block device
+]
+
+
+def _is_command_blocked(command: str) -> Optional[str]:
+    """Return reason string if command is blocked, else None."""
+    cmd = (command or "").strip()
+    for pattern in _BLOCKED_COMMAND_PATTERNS:
+        if re.search(pattern, cmd, re.IGNORECASE):
+            return f"Command blocked by policy (pattern: {pattern})"
+    return None
 
 
 def _tool_read_file(context: Dict[str, Any], path: str) -> str:
@@ -216,7 +254,16 @@ Provide the fix (use a code block for code, or clear instructions)."""
 
 
 def _tool_run_terminal_preview(context: Dict[str, Any], command: str, cwd: Optional[str] = None) -> Dict[str, Any]:
-    """Return pending_approval with command preview; does not run."""
+    """Return pending_approval with command preview; does not run. Blocks dangerous commands."""
+    blocked = _is_command_blocked(command)
+    if blocked:
+        return {
+            PENDING_APPROVAL_KEY: True,
+            "tool": "run_terminal",
+            "args": {"command": command, "cwd": cwd},
+            "preview": f"Blocked: {blocked}",
+            "error": True,
+        }
     preview = f"Command: {command}"
     if cwd:
         preview += f"\nCwd: {cwd}"
@@ -224,7 +271,10 @@ def _tool_run_terminal_preview(context: Dict[str, Any], command: str, cwd: Optio
 
 
 def _execute_run_terminal(context: Dict[str, Any], command: str, cwd: Optional[str] = None) -> str:
-    """Actually run the command. Call after user approval."""
+    """Actually run the command. Call after user approval. Blocks dangerous commands."""
+    blocked = _is_command_blocked(command)
+    if blocked:
+        return json.dumps({"error": blocked})
     root = context.get("workspace_root") or ""
     run_cwd = root
     if cwd:
@@ -390,19 +440,24 @@ def run_loop(
     context: Optional[Dict[str, Any]] = None,
     tools: Optional[List[ToolSpec]] = None,
     max_turns: int = 5,
-) -> Tuple[List[Dict[str, str]], Optional[str], Optional[Dict[str, Any]]]:
+) -> Tuple[List[Dict[str, str]], Optional[str], Optional[Dict[str, Any]], Optional[str]]:
     """
     Run the agent loop: LLM can call tools or return a final reply.
-    Returns (updated_messages, final_reply_text, pending_approval).
-    When a tool returns pending_approval (edit_file, run_terminal), reply is None and pending_approval is set.
-    Unless context.autonomous is True, in which case the tool is executed and the loop continues.
-    Time: O(max_turns * (|messages| + LLM call)); tool_map build O(|tools|).
+    Returns (updated_messages, final_reply_text, pending_approval, error_code).
+    error_code when set: no_llm_configured, workspace_not_allowed, agent_timeout.
     """
     context = context or {}
+    current = list(messages)
+    error_code: Optional[str] = None
+
+    # Workspace allowlist (if configured)
+    workspace_root = (context.get("workspace_root") or "").strip()
+    if workspace_root and not _validate_workspace_allowed(workspace_root):
+        return current, "Workspace not allowed by server policy.", None, "workspace_not_allowed"
+
     tools = tools or get_default_tools(context)
     tool_map = {t["name"]: t for t in tools}
 
-    # Optional: inject CodeLearn guidance (cuddly-octo); context can override url and enabled
     guidance_block = _get_codelearn_guidance_block(context)
     workspace_block = _get_workspace_context_block(context, messages)
     tool_descriptions = "\n".join(
@@ -417,17 +472,21 @@ def run_loop(
         context, tool_descriptions, guidance_block, workspace_block, approval_note
     )
 
-    current = list(messages)
-    # Avoid duplicating system prompt when continuing a conversation (e.g. after execute_pending)
     first_content = (current[0].get("content") or "") if current else ""
     if not current or current[0].get("role") != "system" or "Reply with JSON only" not in first_content:
         current.insert(0, {"role": "system", "content": system})
 
     llm_type, llm = _get_llm()
     if not llm:
-        return current, "I don't have an LLM configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY.", None
+        return current, "I don't have an LLM configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY.", None, "no_llm_configured"
+
+    loop_timeout_sec = getattr(settings, "AGENT_TIMEOUT_SECONDS", 120)
+    start_time = time.time()
 
     for turn in range(max_turns):
+        if time.time() - start_time > loop_timeout_sec:
+            return current, "Agent timed out. Please try a shorter conversation.", None, "agent_timeout"
+
         conv_text = "\n".join(
             f"{m['role'].upper()}: {m['content']}" for m in current
         )
@@ -439,21 +498,21 @@ Your next step (JSON only):"""
 
         raw = _generate(llm_type, llm, prompt, max_tokens=600)
         if not raw:
-            return current, "I couldn't generate a response. Check your LLM configuration.", None
+            return current, "I couldn't generate a response. Check your LLM configuration.", None, None
 
         json_str = _extract_json_object(raw.strip())
         if not json_str:
             if "reply" not in raw.lower() and "tool" not in raw.lower():
-                return current, raw[:1000], None
-            return current, "I didn't understand the response format.", None
+                return current, raw[:1000], None, None
+            return current, "I didn't understand the response format.", None, None
 
         try:
             data = json.loads(json_str)
         except json.JSONDecodeError:
-            return current, "I couldn't parse my own response. Please try again.", None
+            return current, "I couldn't parse my own response. Please try again.", None, None
 
         if data.get("reply"):
-            return current, (data.get("reply") or "").strip(), None
+            return current, (data.get("reply") or "").strip(), None, None
 
         tool_name = data.get("tool")
         args = data.get("args") or {}
@@ -474,10 +533,8 @@ Your next step (JSON only):"""
             result = json.dumps({"error": str(e)})
             logger.exception("Tool %s failed", tool_name)
 
-        # Human-in-the-loop: tool returned pending approval (unless autonomous)
         if isinstance(result, dict) and result.get(PENDING_APPROVAL_KEY):
             if context.get("autonomous") and tool_name in ("edit_file", "run_terminal"):
-                # Execute immediately and continue the loop
                 args = result.get("args") or {}
                 if tool_name == "edit_file":
                     result = _execute_edit_file(
@@ -493,14 +550,14 @@ Your next step (JSON only):"""
                         args.get("cwd"),
                     )
             else:
-                return current, None, result
+                return current, None, result, None
 
         current.append({
             "role": "system",
             "content": f"[Tool {tool_name} result]: {result}",
         })
 
-    return current, "I hit the turn limit. Please try a shorter conversation or rephrase.", None
+    return current, "I hit the turn limit. Please try a shorter conversation or rephrase.", None, None
 
 
 def execute_pending_and_continue(
@@ -509,7 +566,7 @@ def execute_pending_and_continue(
     approved_tool: str,
     approved_args: Dict[str, Any],
     max_turns_after: int = 3,
-) -> Tuple[List[Dict[str, str]], Optional[str], Optional[Dict[str, Any]]]:
+) -> Tuple[List[Dict[str, str]], Optional[str], Optional[Dict[str, Any]], Optional[str]]:
     """
     Execute an approved edit_file or run_terminal, append result to messages, run the loop again.
     Returns (updated_messages, reply, pending_approval).
@@ -543,7 +600,7 @@ def execute_pending_and_continue(
         messages=current,
         context=context,
         max_turns=max_turns_after,
-    )
+    )  # returns 4-tuple; pass through
 
 
 def _get_codeiq_tools(context: Optional[Dict[str, Any]] = None) -> List[ToolSpec]:

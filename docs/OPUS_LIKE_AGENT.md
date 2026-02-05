@@ -85,6 +85,63 @@ If you’re not using the Opus API, the closest you can get with **open-source**
 
 ---
 
+## Can You Modify an Open-Source Model?
+
+**You don’t have to.** For an Opus-like agent, use an open-source model **as-is** with:
+
+- `USE_LOCAL_LLM=True` and `LOCAL_MODEL_NAME=<model>` (e.g. in Ollama)
+- `agent_style=opus_like` in context
+
+The behavior comes from the **system prompt and tool loop**, not from changing the model’s weights.
+
+**If you want to “modify” a model (fine-tune):**
+
+- **What it is:** Train or adapt the model on your own data (e.g. tool-calling examples, coding Q&A) so it’s better at JSON output and reasoning in your format.
+- **What you need:** A dataset (input/output pairs), GPU(s), and a pipeline (e.g. LoRA/QLoRA with Hugging Face, or Ollama’s Modelfile for light customization). This is a separate ML project, not a config change in this app.
+- **When it’s worth it:** If you’ve already picked a strong base model and still see consistent failures (e.g. wrong tool names, ignoring “JSON only”). Start with a good base model + Opus-like prompt; consider fine-tuning only if you hit clear limits.
+
+---
+
+## Recommended Open-Source Models for the Opus-like Agent
+
+Use one of these **without modifying weights**; run via **Ollama** (this app’s default local backend) and set `agent_style=opus_like`.
+
+| Model (Ollama name) | Best for | VRAM / RAM | Notes |
+|--------------------|----------|------------|--------|
+| **qwen2.5:7b** | Balanced quality/speed, JSON and tools | ~8 GB | Strong instruction following and JSON; good default. |
+| **qwen2.5:14b** | Better reasoning, still single-GPU | ~16 GB | More reliable tool choice and “thought” than 7B. |
+| **llama3.1:8b** | General chat + tools | ~8 GB | Solid; slightly less code-focused than Qwen. |
+| **llama3.1:70b** | Closest to “Opus-like” reasoning | ~48 GB+ | Best quality if you have the hardware. |
+| **deepseek-coder:6.7b** | Code-heavy tasks (read_file, edit_file, suggest_fix) | ~8 GB | Optimized for code; good for coding-agent use. |
+| **mistral:7b** | Fast, lightweight | ~8 GB | Good fallback; may need stricter prompting for JSON. |
+| **phi3:medium** | Lower resource | ~8 GB | Smaller; use if 7B is too heavy. |
+
+**Recommendation:**
+
+- **Default choice:** **Qwen 2.5 7B** (`qwen2.5:7b`) – strong instruction and JSON behavior, runs on 8 GB VRAM, works well with the Opus-like prompt.
+- **More “Opus-like” quality:** **Qwen 2.5 14B** or **Llama 3.1 70B** if you have the GPU/RAM.
+- **Code-focused agent:** **DeepSeek Coder 6.7B** for read_file / edit_file / suggest_fix–heavy use.
+
+**Setup (no model modification):**
+
+1. Install [Ollama](https://ollama.com) and pull a model, e.g.:
+   ```bash
+   ollama pull qwen2.5:7b
+   ```
+2. In the backend `.env`:
+   ```env
+   USE_LOCAL_LLM=true
+   LOCAL_LLM_BACKEND=ollama
+   LOCAL_MODEL_NAME=qwen2.5:7b
+   ```
+3. Use the agent with Opus-like style (API or CLI):
+   - API: `context.agent_style = "opus_like"`
+   - CLI: `python -m app.agent_cli --agent-style opus_like --workspace .`
+
+No code changes to the model; the Opus-like behavior comes from **model choice + `agent_style=opus_like` + your existing tools**.
+
+---
+
 ## Summary
 
 | Question | Answer |

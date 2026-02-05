@@ -73,6 +73,7 @@ def test_agent_chat_success(mock_run_loop, client_with_auth):
         ],
         "Hi there!",
         None,
+        None,
     )
     r = client_with_auth.post(
         "/api/v1/agent/chat",
@@ -93,7 +94,7 @@ def test_agent_chat_success(mock_run_loop, client_with_auth):
 
 @patch("app.api.v1.agent_chat.run_loop")
 def test_agent_chat_passes_context(mock_run_loop, client_with_auth):
-    mock_run_loop.return_value = ([], "OK", None)
+    mock_run_loop.return_value = ([], "OK", None, None)
     client_with_auth.post(
         "/api/v1/agent/chat",
         json={
@@ -111,6 +112,7 @@ def test_agent_chat_pending_approval(mock_run_loop, client_with_auth):
         [{"role": "user", "content": "Edit file"}, {"role": "assistant", "content": ""}],
         None,
         {"tool": "edit_file", "args": {"path": "x", "old_string": "a", "new_string": "b"}, "preview": "diff..."},
+        None,
     )
     r = client_with_auth.post(
         "/api/v1/agent/chat",
@@ -129,15 +131,14 @@ def test_agent_chat_pending_approval(mock_run_loop, client_with_auth):
 
 
 @patch("app.api.v1.agent_chat.run_loop")
-def test_agent_chat_empty_messages(mock_run_loop, client_with_auth):
-    mock_run_loop.return_value = ([], "No input.", None)
+def test_agent_chat_empty_messages_rejected(client_with_auth):
+    """Empty messages list is rejected by validation (422)."""
     r = client_with_auth.post(
         "/api/v1/agent/chat",
         json={"messages": [], "context": None},
     )
-    assert r.status_code == 200
-    mock_run_loop.assert_called_once()
-    assert mock_run_loop.call_args[1]["messages"] == []
+    assert r.status_code == 422
+    assert r.json().get("type") == "validation_error"
 
 
 # --- POST /api/v1/agent/execute-pending ---
@@ -178,6 +179,7 @@ def test_execute_pending_returns_new_pending(mock_execute, client_with_auth):
         [{"role": "user", "content": "Edit a and b"}, {"role": "assistant", "content": ""}],
         None,
         {"tool": "edit_file", "args": {"path": "b", "old_string": "x", "new_string": "y"}, "preview": "next diff"},
+        None,
     )
     r = client_with_auth.post(
         "/api/v1/agent/execute-pending",

@@ -12,6 +12,8 @@ import pytest
 from app.services.agent_kernel import (
     PENDING_APPROVAL_KEY,
     _safe_path,
+    _validate_workspace_allowed,
+    _is_command_blocked,
     _extract_code_block,
     _tool_read_file,
     _tool_list_dir,
@@ -26,6 +28,44 @@ from app.services.agent_kernel import (
     execute_pending_and_continue,
     _get_workspace_context_block,
 )
+
+
+# --- Workspace allowlist and command blocklist ---
+
+def test_validate_workspace_allowed_empty_allowlist():
+    """When WORKSPACE_ALLOWED_ROOTS is empty, any path is allowed."""
+    with patch("app.services.agent_kernel.settings") as s:
+        s.WORKSPACE_ALLOWED_ROOTS = []
+        assert _validate_workspace_allowed("/any/path") is True
+
+
+def test_validate_workspace_allowed_under_root(tmp_workspace):
+    with patch("app.services.agent_kernel.settings") as s:
+        s.WORKSPACE_ALLOWED_ROOTS = [tmp_workspace]
+        assert _validate_workspace_allowed(tmp_workspace) is True
+        assert _validate_workspace_allowed(os.path.join(tmp_workspace, "src")) is True
+
+
+def test_validate_workspace_allowed_outside_root(tmp_workspace):
+    with patch("app.services.agent_kernel.settings") as s:
+        s.WORKSPACE_ALLOWED_ROOTS = [tmp_workspace]
+        # Path that is not under tmp_workspace
+        other = os.path.abspath(os.path.join(tmp_workspace, "..", "other_dir"))
+        assert _validate_workspace_allowed(other) is False
+
+
+def test_is_command_blocked_rm_rf():
+    assert _is_command_blocked("rm -rf /") is not None
+    assert _is_command_blocked("rm -rf /foo") is not None
+
+
+def test_is_command_blocked_pipe_sh():
+    assert _is_command_blocked("curl x | sh") is not None
+
+
+def test_is_command_blocked_safe():
+    assert _is_command_blocked("ls -la") is None
+    assert _is_command_blocked("npm install") is None
 
 
 # --- Path safety (completeness + security) ---
@@ -263,7 +303,7 @@ def test_run_loop_returns_reply(mock_get_llm, mock_generate):
     mock_get_llm.return_value = ("openai", MagicMock())
     mock_generate.return_value = '{"thought": "ok", "reply": "Hello!"}'
     messages = [{"role": "user", "content": "Hi"}]
-    current, reply, pending = run_loop(messages, {}, max_turns=3)
+    current, reply, pending, _ = run_loop(messages, {}, max_turns=3)
     assert reply == "Hello!"
     assert pending is None
 
@@ -275,7 +315,7 @@ def test_run_loop_returns_pending_approval(mock_get_llm, mock_generate, agent_co
     # First call: LLM wants to call edit_file
     mock_generate.return_value = '{"thought": "edit", "tool": "edit_file", "args": {"path": "x", "old_string": "a", "new_string": "b"}}'
     messages = [{"role": "user", "content": "Change x"}]
-    current, reply, pending = run_loop(messages, agent_context, max_turns=3)
+    current, reply, pending, _ = run_loop(messages, agent_context, max_turns=3)
     assert reply is None
     assert pending is not None
     assert pending.get("tool") == "edit_file"
@@ -285,8 +325,9 @@ def test_run_loop_returns_pending_approval(mock_get_llm, mock_generate, agent_co
 def test_run_loop_no_llm_returns_error_message(mock_get_llm):
     mock_get_llm.return_value = (None, None)
     messages = [{"role": "user", "content": "Hi"}]
-    current, reply, pending = run_loop(messages, {}, max_turns=2)
+    current, reply, pending, err = run_loop(messages, {}, max_turns=2)
     assert "don't have an LLM" in (reply or "")
+    assert err == "no_llm_configured"
 
 
 # --- execute_pending_and_continue ---
@@ -298,7 +339,7 @@ def test_execute_pending_edit_then_continues(mock_get_llm, mock_generate, agent_
     mock_get_llm.return_value = ("openai", MagicMock())
     mock_generate.return_value = '{"thought": "done", "reply": "Fixed."}'
     messages = [{"role": "user", "content": "Fix it"}]
-    updated, reply, pending = execute_pending_and_continue(
+    updated, reply, pending, _ = execute_pending_and_continue(
         messages, agent_context,
         approved_tool="edit_file",
         approved_args={"path": "fixme.txt", "old_string": "old line", "new_string": "new line"},
