@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Layers,
   HelpCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -133,6 +134,20 @@ export default function BuildPage() {
       URL.revokeObjectURL(url);
     } catch {
       setError('Download failed.');
+    }
+  };
+
+  const handleOpenInBrowser = async () => {
+    if (!project) return;
+    setError(null);
+    try {
+      const { data } = await buildApi.getProjectOpen(project.id);
+      const blob = new Blob([data], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('Could not open in browser. Try downloading and opening index.html.');
     }
   };
 
@@ -365,15 +380,26 @@ export default function BuildPage() {
           )}
         </div>
 
-        <div className="border-t border-white/10 p-4">
-          <Button
-            onClick={handleDownload}
-            disabled={!project || generating}
-            className="w-full h-12 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium disabled:opacity-50 disabled:pointer-events-none"
-          >
-            <Download className="h-5 w-5 mr-2" />
-            Download project
-          </Button>
+        <div className="border-t border-white/10 p-4 flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              onClick={handleOpenInBrowser}
+              disabled={!project || generating}
+              variant="outline"
+              className="h-12 rounded-xl border-white/20 bg-white/5 text-[#e8e8ed] hover:bg-white/10 hover:border-indigo-500/50 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              <ExternalLink className="h-5 w-5 mr-2" />
+              Open in browser
+            </Button>
+            <Button
+              onClick={handleDownload}
+              disabled={!project || generating}
+              className="h-12 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium disabled:opacity-50 disabled:pointer-events-none"
+            >
+              <Download className="h-5 w-5 mr-2" />
+              Download
+            </Button>
+          </div>
         </div>
       </div>
     </div>

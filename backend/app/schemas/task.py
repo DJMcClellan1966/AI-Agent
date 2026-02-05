@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, Dict
 from datetime import datetime
 
@@ -33,7 +33,7 @@ class TaskResponse(TaskBase):
     agent_id: int
     status: str
     output_data: Optional[Dict]
-    metadata: Optional[Dict]
+    task_metadata: Optional[Dict] = Field(default=None, serialization_alias="metadata")
     approved_at: Optional[datetime]
     started_at: Optional[datetime]
     completed_at: Optional[datetime]

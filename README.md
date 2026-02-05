@@ -1,278 +1,31 @@
-# Synthesis – Conversational App Creation & Agent
+# Local Agent IDE
 
-Create working web apps by describing them in plain language, and chat with an LLM-powered agent that can read files, edit code, and run commands (with your approval).
+A simple IDE + Opus-like agent: file tree, editor, and chat with an LLM (Ollama qwen3:8b by default) that can read files, edit code, run commands, and generate apps—with your approval.
 
-## ✨ Build (conversational apps)
+## What’s in the app
 
-- **Conversational UI**: Describe your app (e.g. "A habit tracker with streaks"), add more context in chat.
-- **Real code generation**: Backend uses an LLM to turn the conversation into a structured spec, then generates `index.html`, `styles.css`, and `app.js`.
-- **Download**: Get a zip of the generated files and run them locally.
-- **Auth & projects**: Sign up, log in, and your generated projects are stored per user.
+- **IDE** (`/ide`): Workspace root, file tree, file viewer, and agent chat in one screen.
+- **Agent** (`/agent`): Full chat with the same agent (workspace, approve edits/commands). Uses Opus-like prompting (reasoning, JSON-only).
+- **Build** (`/build`): Describe an app in chat → get a single HTML file (Synthesis-style) to open in the browser.
+- **Auth**: Login/register and settings. No payments or external integrations.
 
-## 🤖 Agent (Cursor-like assistant)
+## Run locally (no API keys)
 
-- **Chat UI**: Use the **Agent** page to talk to an LLM that can call tools: `suggest_questions`, `generate_app`, `read_file`, `list_dir`, `edit_file`, `run_terminal`.
-- **Human-in-the-loop**: File edits and terminal commands require your approval before they run.
-- **Workspace**: Set an optional workspace root so the agent can read/edit files and run commands in your project.
-- **Integrations (Cuddly-Octo)**: Toggle **CodeLearn** (guidance URL) and **CodeIQ** (workspace path) in the Agent Integrations panel. Settings are stored in the browser and can be prefilled from server defaults.
+1. **Ollama**: Install [Ollama](https://ollama.ai), then `ollama pull qwen3:8b`.
+2. **Backend**: Copy `.env.example` to `.env` (use `DATABASE_URL=sqlite:///./agentic_ai.db`, `USE_CELERY=false`). Start: `uvicorn app.main:app --reload --port 8001` (from `backend/` with venv active).
+3. **Frontend**: `cd frontend && npm install && npm run dev`.
+4. Or from project root: `.\run-simple.ps1` (starts backend in a new window, then frontend).
 
-**Optional environment variables** (backend):
+Open http://localhost:3000. In the IDE, set **Workspace root** to a folder path so the agent can read/edit files and run commands.
 
-- `CODELEARN_GUIDANCE_URL` – Base URL for CodeLearn guidance (avoid/encourage patterns). UI can override via Integrations.
-- `CODEIQ_WORKSPACE` – Default path for CodeIQ CLI (search_code, analyze_code). UI can override via Integrations.
+## Guide docs (this repo)
 
-See [docs/AGENT_ROADMAP.md](docs/AGENT_ROADMAP.md) for the roadmap, [docs/OPUS_LIKE_AGENT.md](docs/OPUS_LIKE_AGENT.md) for building an Opus-like agent (with any model), and [docs/CUDDLY_OCTO_BENEFITS.md](docs/CUDDLY_OCTO_BENEFITS.md) for CodeLearn, CodeIQ, and Sentinel.
+- [docs/AGENT_ROADMAP.md](docs/AGENT_ROADMAP.md) – Agent kernel, tools, roadmap.
+- [docs/COMPARISON_AND_IMPROVEMENTS.md](docs/COMPARISON_AND_IMPROVEMENTS.md) – How this compares to Cursor, Synthesis, etc.
+- [docs/CUDDLY_OCTO_BENEFITS.md](docs/CUDDLY_OCTO_BENEFITS.md) – CodeIQ/CodeLearn ideas (reference; integration code removed for simplicity).
+- [docs/DESKTOP_CODE_FINDINGS.md](docs/DESKTOP_CODE_FINDINGS.md) – Desktop/code findings.
+- [docs/LOCAL_AGENT_IDE.md](docs/LOCAL_AGENT_IDE.md) – Local Agent IDE setup and usage.
+- [docs/ML_TOOLBOX_BENEFITS.md](docs/ML_TOOLBOX_BENEFITS.md) – ML toolbox ideas (reference).
+- [docs/OPUS_LIKE_AGENT.md](docs/OPUS_LIKE_AGENT.md) – Opus-like behavior with open-source models.
 
----
-
-# AgenticAI – AI-Powered Life Assistant (legacy)
-
-The codebase also includes an **Agentic AI Life Assistant** (multi-agent system for tasks, email, scheduling, etc.). That functionality is still available via API and code; the UI emphasizes **Build** instead.
-
-## 🌟 Features
-
-- **Multi-Agent System**: Specialized AI agents (Email, Scheduler, Finance, Planning, Coordinator) working together
-- **Proactive Task Management**: Agents predict your needs and suggest actions before you ask
-- **Permission-Based Actions**: Full user control with approval workflows
-- **Email Management**: Smart email sorting, automated responses, and follow-up scheduling
-- **Appointment Booking**: Automated scheduling with calendar integration
-- **Bill Negotiation**: AI-powered negotiation for better rates on your services
-- **Routine Planning**: Personalized daily/weekly routine optimization
-- **Integration Hub**: Connect with Gmail, Outlook, Google Calendar, banking APIs, and more
-- **Modern Dashboard**: Beautiful, responsive UI to monitor all agent activities
-- **Subscription Tiers**: Free, Pro, and Premium plans with Stripe integration
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────┐
-│         Frontend (Next.js 14)               │
-│  - Modern Dashboard with Stats              │
-│  - Agent Management & Configuration         │
-│  - Task Approval Workflow                   │
-│  - Integration Hub                          │
-│  - Settings & User Profile                  │
-│  - Subscription Management                  │
-└─────────────┬───────────────────────────────┘
-              │ REST API
-┌─────────────▼───────────────────────────────┐
-│      Backend API (FastAPI)                  │
-│  - Authentication (JWT)                     │
-│  - Agent CRUD & Orchestration               │
-│  - Task Queue & Approval System             │
-│  - Permission Manager                       │
-│  - Subscription/Payment (Stripe)            │
-└─────────────┬───────────────────────────────┘
-              │
-┌─────────────▼───────────────────────────────┐
-│        Agent Framework (LangChain)          │
-│  📧 Email Agent - Sort, draft, schedule     │
-│  📅 Scheduler Agent - Book, optimize        │
-│  💰 Finance Agent - Track, negotiate        │
-│  📋 Planning Agent - Routines, priorities   │
-│  🎯 Coordinator Agent - Orchestrate all     │
-└─────────────────────────────────────────────┘
-```
-
-## 🚀 Tech Stack
-
-### Backend
-- **Python 3.11+** with FastAPI
-- **PostgreSQL** for data storage
-- **Redis** for caching and task queues
-- **Celery** for async task processing
-- **OpenAI/Anthropic APIs** for AI capabilities
-- **LangChain** for agent orchestration
-
-### Frontend
-- **Next.js 14+** with App Router
-- **TypeScript**
-- **Tailwind CSS** for styling
-- **Shadcn/UI** for components
-- **React Query** for data fetching
-- **Zustand** for state management
-
-### Infrastructure
-- **Docker** & Docker Compose
-- **Nginx** for reverse proxy
-- **PostgreSQL** database
-- **Redis** for caching
-
-## 📋 Prerequisites
-
-- Node.js 18+
-- Python 3.11+
-- Docker & Docker Compose
-- PostgreSQL 15+
-- Redis
-
-## 🛠️ Installation
-
-### 1. Clone the repository
-```bash
-git clone <repository-url>
-cd AI-Agent
-```
-
-### 2. Backend Setup
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env
-# Edit .env with your API keys and configuration
-```
-
-### 3. Frontend Setup
-```bash
-cd frontend
-npm install
-cp .env.example .env.local
-# Edit .env.local with your configuration
-```
-
-### 4. Database Setup
-```bash
-# Using Docker
-docker-compose up -d postgres redis
-
-# Run migrations
-cd backend
-alembic upgrade head
-```
-
-### 5. Run the Application
-
-**Using Docker (Recommended):**
-```bash
-docker-compose up
-```
-
-**Manual:**
-```bash
-# Terminal 1: Backend
-cd backend
-uvicorn app.main:app --reload --port 8000
-
-# Terminal 2: Frontend
-cd frontend
-npm run dev
-
-# Terminal 3: Worker
-cd backend
-celery -A app.worker worker --loglevel=info
-```
-
-Access the application at `http://localhost:3000`
-
-## 🎯 Usage
-
-1. **Sign Up**: Create your account
-2. **Connect Services**: Link email, calendar, and other services
-3. **Configure Agents**: Set preferences for each agent
-4. **Set Permissions**: Define what agents can do automatically
-5. **Monitor Dashboard**: Track agent activities and approve actions
-
-## 🤖 Agent Types
-
-### Email Agent
-- Sorts and categorizes emails
-- Drafts responses
-- Schedules follow-ups
-- Flags urgent messages
-
-### Scheduler Agent
-- Books appointments
-- Finds optimal meeting times
-- Reschedules conflicts
-- Sends reminders
-
-### Finance Agent
-- Tracks bills
-- Negotiates with service providers
-- Finds better rates
-- Monitors spending
-
-### Planning Agent
-- Optimizes daily routines
-- Suggests task prioritization
-- Plans weekly schedules
-- Adapts to patterns
-
-### Coordinator Agent
-- Manages inter-agent communication
-- Resolves conflicts
-- Prioritizes tasks
-- Learns user preferences
-
-## 💰 Subscription Tiers
-
-### Free Tier
-- Basic email management
-- Manual appointment booking
-- Limited to 50 tasks/month
-
-### Pro ($10/month)
-- All agents enabled
-- 500 tasks/month
-- Basic integrations
-- Email support
-
-### Premium ($30/month)
-- Unlimited tasks
-- Advanced integrations
-- Priority support
-- Custom agent training
-- White-label options
-
-## 🔐 Security & Privacy
-
-- End-to-end encryption for sensitive data
-- OAuth 2.0 for service integrations
-- User consent required for all actions
-- Data retention policies
-- GDPR compliant
-
-## 🧪 Testing
-
-```bash
-# Backend tests
-cd backend
-pytest
-
-# Frontend tests
-cd frontend
-npm test
-```
-
-## 📚 Documentation
-
-- [Agent roadmap & tools](docs/AGENT_ROADMAP.md)
-- [Opus-like agent (any model)](docs/OPUS_LIKE_AGENT.md)
-- [Robustness (validation, health, errors)](docs/ROBUSTNESS.md)
-- [Cuddly-Octo (CodeLearn, CodeIQ, Sentinel)](docs/CUDDLY_OCTO_BENEFITS.md)
-- [Architecture](ARCHITECTURE.md) · [Quickstart](QUICKSTART.md) · [Setup](SETUP.md)
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
-
-## 📄 License
-
-MIT License - see [LICENSE](./LICENSE) file for details
-
-## 🆘 Support
-
-- Email: support@agentic-ai.app
-- Documentation: https://docs.agentic-ai.app
-- Discord: https://discord.gg/agentic-ai
-
-## 🗺️ Roadmap
-
-- [ ] Voice agent integration
-- [ ] Mobile app (iOS/Android)
-- [ ] Advanced analytics dashboard
-- [ ] Custom agent marketplace
-- [ ] Team collaboration features
-- [ ] Smart home integrations
+See [SETUP.md](SETUP.md) for detailed setup (including simplified run and Docker).

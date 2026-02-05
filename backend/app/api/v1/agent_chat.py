@@ -2,7 +2,6 @@
 Agent chat endpoint: run the agent kernel (LLM + tools) and return the reply.
 Supports human-in-the-loop for edit_file and run_terminal.
 """
-import os
 from fastapi import APIRouter, Depends, status
 
 from app.models.user import User
@@ -28,11 +27,8 @@ def _error_response(error_code: str, detail: str, status_code: int):
 
 @router.get("/config")
 def agent_config(current_user: User = Depends(get_current_active_user)):
-    """Return server-side defaults for CodeLearn/CodeIQ so the UI can pre-fill. No secrets."""
-    return {
-        "codelearn_guidance_url": (os.environ.get("CODELEARN_GUIDANCE_URL") or "").strip(),
-        "codeiq_workspace": (os.environ.get("CODEIQ_WORKSPACE") or "").strip(),
-    }
+    """Minimal config for the agent UI (no external integrations)."""
+    return {}
 
 
 def _pending_to_schema(p: dict):

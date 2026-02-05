@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, HTMLResponse
 from sqlalchemy.orm import Session
 from typing import List
 import zipfile
@@ -114,7 +114,7 @@ def download_project(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """Download project as a zip of generated files."""
+    """Download project as a zip of generated files. With BUILD_SINGLE_FILE, zip contains one index.html (open in browser)."""
     project = db.query(Project).filter(
         Project.id == project_id,
         Project.user_id == current_user.id,
@@ -135,6 +135,32 @@ def download_project(
             "Content-Disposition": f'attachment; filename="{project.name}_project.zip"',
         },
     )
+
+
+@router.get("/projects/{project_id}/open", response_class=HTMLResponse)
+def open_project_in_browser(
+    project_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Return the generated app as a single HTML page (Synthesis-style).
+    Open this URL in a browser to run the app with no download. Works when BUILD_SINGLE_FILE=true (single index.html).
+    """
+    project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user.id,
+    ).first()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    files = project.files or {}
+    html = files.get("index.html")
+    if not html:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No index.html in project (multi-file projects: use /download and open index.html from the zip).",
+        )
+    return HTMLResponse(html)
 
 
 @router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)

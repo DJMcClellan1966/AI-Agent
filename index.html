@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-Agent – Project index</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; line-height: 1.5; }
+    h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+    .subtitle { color: #555; margin-bottom: 1.5rem; }
+    section { margin-bottom: 1.75rem; }
+    h2 { font-size: 1.1rem; margin-bottom: 0.5rem; color: #333; }
+    ul { margin: 0; padding-left: 1.25rem; }
+    li { margin-bottom: 0.35rem; }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .card { background: #f5f5f5; border-radius: 8px; padding: 1rem; margin: 0.5rem 0; }
+    code { background: #eee; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.9em; }
+    .note { font-size: 0.9rem; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Synthesis / AI-Agent</h1>
+  <p class="subtitle">Conversational app builder + code agent (Opus-like, local or API)</p>
+
+  <section>
+    <h2>Run the agent (CLI)</h2>
+    <div class="card">
+      <p>From a terminal in the <strong>backend</strong> folder:</p>
+      <p><code>python -m app.agent_cli</code></p>
+      <p>With workspace and Opus-like style:</p>
+      <p><code>python -m app.agent_cli --workspace . --agent-style opus_like</code></p>
+      <p class="note">Ensure Ollama is running and <code>backend\.env</code> has <code>USE_LOCAL_LLM=true</code>, <code>LOCAL_MODEL_NAME=qwen3:8b</code> (or <code>qwen2.5:7b</code>).</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Run the app (web)</h2>
+    <div class="card">
+      <p><strong>Backend:</strong> <code>cd backend</code> then <code>uvicorn app.main:app --reload --port 8000</code></p>
+      <p><strong>Frontend:</strong> <code>cd frontend</code> then <code>npm run dev</code></p>
+      <p>Then open <a href="http://localhost:3000" target="_blank" rel="noopener">http://localhost:3000</a> and use the Agent page.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Documentation</h2>
+    <ul>
+      <li><a href="README.md">README.md</a> – Overview, Build + Agent, tech stack</li>
+      <li><a href="SETUP.md">SETUP.md</a> – Installation and setup</li>
+      <li><a href="docs/AGENT_ROADMAP.md">docs/AGENT_ROADMAP.md</a> – Agent roadmap and tools</li>
+      <li><a href="docs/OPUS_LIKE_AGENT.md">docs/OPUS_LIKE_AGENT.md</a> – Opus-like agent (Qwen, Ollama)</li>
+      <li><a href="docs/ROBUSTNESS.md">docs/ROBUSTNESS.md</a> – Robustness and hardening</li>
+      <li><a href="docs/COMPARISON_AND_IMPROVEMENTS.md">docs/COMPARISON_AND_IMPROVEMENTS.md</a> – How this app compares and what to improve</li>
+      <li><a href="docs/CUDDLY_OCTO_BENEFITS.md">docs/CUDDLY_OCTO_BENEFITS.md</a> – CodeLearn, CodeIQ, Sentinel</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Config</h2>
+    <p>Backend env: <code>backend\.env</code> (copy from <code>.env.example</code> if needed). Set <code>USE_LOCAL_LLM</code>, <code>LOCAL_MODEL_NAME</code> for Ollama.</p>
+  </section>
+</body>
+</html>

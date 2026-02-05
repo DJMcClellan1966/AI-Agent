@@ -30,31 +30,40 @@ except ImportError:
         LANGCHAIN_AVAILABLE = False
 
 
+class _MockLLM:
+    """Fallback when no API keys and no local LLM: app still runs, returns friendly message."""
+
+    def generate(self, prompt: str, max_tokens: int = 500, **kwargs) -> str:
+        return (
+            "I'm running in local mode without an LLM. For full features: "
+            "install Ollama (https://ollama.ai) and run e.g. `ollama run qwen3:8b`, or set OPENAI_API_KEY / ANTHROPIC_API_KEY in .env."
+        )
+
+
 def _get_llm():
-    """Return LLM instance (LangChain or local) with timeout from config."""
+    """Return LLM instance (LangChain, local, or mock) with timeout from config."""
     timeout = getattr(settings, "LLM_REQUEST_TIMEOUT_SECONDS", 120)
     if settings.USE_LOCAL_LLM:
         local = get_local_llm()
         if local.is_available():
             return ("local", local)
-        logger.warning("Local LLM not available, falling back to API")
-    if not LANGCHAIN_AVAILABLE:
-        return (None, None)
-    if settings.OPENAI_API_KEY:
+        logger.warning("Local LLM not available, falling back to API or mock")
+    if LANGCHAIN_AVAILABLE and settings.OPENAI_API_KEY:
         return ("openai", ChatOpenAI(
             model=settings.OPENAI_MODEL,
             temperature=0.5,
             openai_api_key=settings.OPENAI_API_KEY,
             timeout=timeout,
         ))
-    if settings.ANTHROPIC_API_KEY:
+    if LANGCHAIN_AVAILABLE and settings.ANTHROPIC_API_KEY:
         return ("anthropic", ChatAnthropic(
             model=settings.ANTHROPIC_MODEL,
             temperature=0.5,
             anthropic_api_key=settings.ANTHROPIC_API_KEY,
             timeout=timeout,
         ))
-    return (None, None)
+    # No API keys and no local LLM: use mock so app runs without keys
+    return ("local", _MockLLM())
 
 
 def _generate(llm_type: str, llm, prompt: str, max_tokens: int = 2000) -> str:
@@ -205,10 +214,35 @@ def _default_spec(messages: List[Dict[str, str]]) -> Dict[str, Any]:
     }
 
 
+def _bundle_single_html(files: Dict[str, str]) -> str:
+    """
+    Bundle index.html + styles.css + app.js into one HTML file (Synthesis-style).
+    Result can be opened directly in the browser (file:// or any server) with no other files.
+    """
+    html = files.get("index.html", "")
+    css = files.get("styles.css", "")
+    js = files.get("app.js", "")
+    # Remove external link/script so we can inline
+    html = re.sub(r'<link[^>]*href=["\']?styles\.css["\']?[^>]*>\s*', "", html, flags=re.IGNORECASE)
+    html = re.sub(r'<script[^>]*src=["\']?app\.js["\']?[^>]*>\s*</script>\s*', "", html, flags=re.IGNORECASE)
+    # Inject <style> before </head>
+    if "</head>" in html:
+        html = html.replace("</head>", f"\n<style>\n{css}\n</style>\n</head>", 1)
+    else:
+        html = html.replace("<head>", f"<head>\n<style>\n{css}\n</style>", 1)
+    # Inject <script> before </body>
+    if "</body>" in html:
+        html = html.replace("</body>", f"\n<script>\n{js}\n</script>\n</body>", 1)
+    else:
+        html = html + f"\n<script>\n{js}\n</script>\n"
+    return html
+
+
 def spec_to_code(spec: Dict[str, Any]) -> Dict[str, str]:
     """
-    Generate HTML, CSS, and JS from a structured spec.
-    Returns dict: { "index.html": "...", "styles.css": "...", "app.js": "..." }.
+    Generate HTML, CSS, and JS from a structured spec (Synthesis-style flow).
+    If BUILD_SINGLE_FILE: returns { "index.html": "single file with inline CSS/JS" } for open-in-browser.
+    Else: returns { "index.html", "styles.css", "app.js" }.
     """
     name = spec.get("name", "MyApp")
     app_type = spec.get("type", "app")
@@ -219,10 +253,10 @@ def spec_to_code(spec: Dict[str, Any]) -> Dict[str, str]:
 
     llm_type, llm = _get_llm()
     if not llm:
-        return _template_code(name, app_type, features, persistence, theme, ui)
-
-    # Single prompt for all three files to keep context
-    prompt = f"""You are a front-end developer. Generate a complete, working single-page web app as three files.
+        files = _template_code(name, app_type, features, persistence, theme, ui)
+    else:
+        # Single prompt for all three files to keep context
+        prompt = f"""You are a front-end developer. Generate a complete, working single-page web app as three files.
 
 Spec:
 - App name: {name}
@@ -247,14 +281,16 @@ Reply in this exact format (no other text):
 ...javascript...
 ===END==="""
 
-    raw = _generate(llm_type, llm, prompt, max_tokens=4000)
-    if not raw:
-        return _template_code(name, app_type, features, persistence, theme, ui)
+        raw = _generate(llm_type, llm, prompt, max_tokens=4000)
+        if not raw:
+            files = _template_code(name, app_type, features, persistence, theme, ui)
+        else:
+            files = _parse_code_blocks(raw)
+            if not files:
+                files = _template_code(name, app_type, features, persistence, theme, ui)
 
-    files = _parse_code_blocks(raw)
-    if not files:
-        return _template_code(name, app_type, features, persistence, theme, ui)
-
+    if getattr(settings, "BUILD_SINGLE_FILE", True) and all(k in files for k in ("index.html", "styles.css", "app.js")):
+        return {"index.html": _bundle_single_html(files)}
     return files
 
 

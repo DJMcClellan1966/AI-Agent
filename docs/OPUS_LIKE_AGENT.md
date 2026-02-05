@@ -109,6 +109,7 @@ Use one of these **without modifying weights**; run via **Ollama** (this app’s
 | Model (Ollama name) | Best for | VRAM / RAM | Notes |
 |--------------------|----------|------------|--------|
 | **qwen2.5:7b** | Balanced quality/speed, JSON and tools | ~8 GB | Strong instruction following and JSON; good default. |
+| **qwen3:8b** | Newer Qwen 3, instruction + tools | ~8 GB | Good alternative to 2.5:7b; use if you have it. |
 | **qwen2.5:14b** | Better reasoning, still single-GPU | ~16 GB | More reliable tool choice and “thought” than 7B. |
 | **llama3.1:8b** | General chat + tools | ~8 GB | Solid; slightly less code-focused than Qwen. |
 | **llama3.1:70b** | Closest to “Opus-like” reasoning | ~48 GB+ | Best quality if you have the hardware. |
@@ -118,7 +119,7 @@ Use one of these **without modifying weights**; run via **Ollama** (this app’s
 
 **Recommendation:**
 
-- **Default choice:** **Qwen 2.5 7B** (`qwen2.5:7b`) – strong instruction and JSON behavior, runs on 8 GB VRAM, works well with the Opus-like prompt.
+- **Default choice:** **Qwen 2.5 7B** (`qwen2.5:7b`) or **Qwen 3 8B** (`qwen3:8b`) – both work well with the Opus-like prompt; use whichever you have (e.g. `ollama list`).
 - **More “Opus-like” quality:** **Qwen 2.5 14B** or **Llama 3.1 70B** if you have the GPU/RAM.
 - **Code-focused agent:** **DeepSeek Coder 6.7B** for read_file / edit_file / suggest_fix–heavy use.
 
@@ -128,12 +129,13 @@ Use one of these **without modifying weights**; run via **Ollama** (this app’s
    ```bash
    ollama pull qwen2.5:7b
    ```
-2. In the backend `.env`:
+2. In the backend `.env` (use a model you’ve pulled, e.g. `qwen2.5:7b` or `qwen3:8b`):
    ```env
    USE_LOCAL_LLM=true
    LOCAL_LLM_BACKEND=ollama
    LOCAL_MODEL_NAME=qwen2.5:7b
    ```
+   Or set `LOCAL_MODEL_NAME=qwen3:8b` if you prefer Qwen 3 8B.
 3. Use the agent with Opus-like style (API or CLI):
    - API: `context.agent_style = "opus_like"`
    - CLI: `python -m app.agent_cli --agent-style opus_like --workspace .`

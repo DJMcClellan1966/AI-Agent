@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, JSON, Text
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Enum, JSON, Text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
@@ -41,7 +41,7 @@ class Task(Base):
     # Task data
     input_data = Column(JSON, default={})
     output_data = Column(JSON, default={})
-    metadata = Column(JSON, default={})
+    task_metadata = Column(JSON, default={}, name="metadata")
     
     # Execution details
     requires_approval = Column(Boolean, default=True)

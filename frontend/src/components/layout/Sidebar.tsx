@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard,
+  Code2,
   Sparkles,
   Bot,
   Settings,
@@ -17,9 +17,9 @@ import { useAuthStore } from '@/store/authStore';
 import { useState } from 'react';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Build', href: '/build', icon: Sparkles },
+  { name: 'IDE', href: '/ide', icon: Code2 },
   { name: 'Agent', href: '/agent', icon: Bot },
+  { name: 'Build', href: '/build', icon: Sparkles },
 ];
 
 const secondaryNavigation = [
@@ -46,11 +46,11 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex items-center justify-between h-16 px-4 border-b border-gray-800">
         {!collapsed && (
-          <Link href="/dashboard" className="flex items-center gap-2">
+          <Link href="/ide" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
+              <Code2 className="w-5 h-5 text-white" />
             </div>
-            <span className="text-lg font-bold text-white">Synthesis</span>
+            <span className="text-lg font-bold text-white">Local Agent IDE</span>
           </Link>
         )}
         <button

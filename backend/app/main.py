@@ -8,7 +8,8 @@ import logging
 from sqlalchemy import text
 
 from app.core.config import settings
-from app.api.v1 import auth, users, agents, tasks, integrations, subscriptions, build, agent_chat
+from app.core.middleware import RateLimitMiddleware, RequestBodySizeLimitMiddleware, RequestIDMiddleware
+from app.api.v1 import auth, users, build, agent_chat, workspace
 from app.db.database import engine, Base
 from app.core.logging_config import setup_logging
 
@@ -100,13 +101,10 @@ async def root():
     }
 
 
-# Include routers
+# Include routers (simplified: local agent IDE – auth, users, workspace, agent chat, build)
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
-app.include_router(agents.router, prefix="/api/v1/agents", tags=["Agents"])
-app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["Tasks"])
-app.include_router(integrations.router, prefix="/api/v1/integrations", tags=["Integrations"])
-app.include_router(subscriptions.router, prefix="/api/v1/subscriptions", tags=["Subscriptions"])
+app.include_router(workspace.router, prefix="/api/v1/workspace", tags=["Workspace"])
 app.include_router(build.router, prefix="/api/v1/build", tags=["Build"])
 app.include_router(agent_chat.router, prefix="/api/v1/agent", tags=["Agent"])
 

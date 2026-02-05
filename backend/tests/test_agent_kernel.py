@@ -288,13 +288,6 @@ def test_get_default_tools_returns_list():
     assert "generate_app" in names
 
 
-def test_get_default_tools_codeiq_disabled():
-    tools = get_default_tools({"codeiq_enabled": False})
-    names = [t["name"] for t in tools]
-    assert "search_code" not in names
-    assert "analyze_code" not in names
-
-
 # --- run_loop (mocked LLM) ---
 
 @patch("app.services.agent_kernel._generate")

@@ -1,6 +1,18 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Union
 import os
+
+
+def _parse_list_str(v: Union[str, List[str], None]) -> List[str]:
+    """Accept comma-separated string from .env or list from JSON."""
+    if v is None:
+        return []
+    if isinstance(v, list):
+        return [x.strip() for x in v if isinstance(x, str) and x.strip()]
+    if isinstance(v, str):
+        return [x.strip() for x in v.split(",") if x.strip()]
+    return []
 
 
 class Settings(BaseSettings):
@@ -10,14 +22,16 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     SECRET_KEY: str = "your-secret-key-change-in-production"
     
-    # Database
+    # Database (use SQLite for simplified local run: sqlite:///./agentic_ai.db)
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/agentic_ai"
     
-    # Redis
+    # Redis (required only when USE_CELERY=true)
     REDIS_URL: str = "redis://localhost:6379"
+    # Set False to run without Celery/Redis: task execution runs in-process
+    USE_CELERY: bool = False
     
-    # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    # CORS (env: comma-separated, e.g. http://localhost:3000,http://localhost:8000)
+    CORS_ORIGINS: Union[str, List[str]] = "http://localhost:3000,http://localhost:8000"
     
     # AI APIs
     OPENAI_API_KEY: str = ""
@@ -25,8 +39,8 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4-turbo-preview"
     ANTHROPIC_MODEL: str = "claude-3-opus-20240229"
     
-    # Local LLM Settings
-    USE_LOCAL_LLM: bool = False  # Set to True to use local models
+    # Local LLM Settings (default True so app runs without API keys when Ollama is used)
+    USE_LOCAL_LLM: bool = True
     LOCAL_LLM_BACKEND: str = "ollama"  # Options: ollama, gpt4all, llama-cpp
     LOCAL_MODEL_NAME: str = "mistral:7b"  # Model to use
     OLLAMA_HOST: str = "http://localhost:11434"
@@ -60,6 +74,9 @@ class Settings(BaseSettings):
     AGENT_TIMEOUT_SECONDS: int = 120
     MAX_PENDING_TASKS: int = 100
     
+    # Build: Synthesis-style single index file (open in browser with no server)
+    BUILD_SINGLE_FILE: bool = True  # One index.html with inline CSS/JS; False = multi-file (index + styles.css + app.js)
+
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_PER_HOUR: int = 1000
@@ -73,11 +90,19 @@ class Settings(BaseSettings):
     LLM_REQUEST_TIMEOUT_SECONDS: int = 120
 
     # Security: workspace allowlist (empty = no restriction; else workspace_root must be under one of these)
-    WORKSPACE_ALLOWED_ROOTS: List[str] = []
+    # Env: comma-separated paths or leave empty
+    WORKSPACE_ALLOWED_ROOTS: Union[str, List[str]] = ""
+
+    @field_validator("CORS_ORIGINS", "WORKSPACE_ALLOWED_ROOTS", mode="after")
+    @classmethod
+    def _normalize_list(cls, v: Union[str, List[str]]) -> List[str]:
+        """Normalize to List[str] so app code always gets a list."""
+        return _parse_list_str(v)
 
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # ignore extra keys from .env (e.g. NEXT_PUBLIC_* for frontend)
 
 
 settings = Settings()

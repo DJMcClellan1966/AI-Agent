@@ -300,7 +300,7 @@ def _execute_run_terminal(context: Dict[str, Any], command: str, cwd: Optional[s
 
 
 def get_default_tools(context: Optional[Dict[str, Any]] = None) -> List[ToolSpec]:
-    """Tools available to the agent. Context can override codeiq_enabled / codeiq_workspace (from UI toggles)."""
+    """Tools available to the agent (read_file, edit_file, run_terminal, suggest_questions, generate_app, etc.)."""
     context = context or {}
 
     def _suggest(ctx: Dict[str, Any], **kwargs: Any) -> str:
@@ -352,7 +352,6 @@ def get_default_tools(context: Optional[Dict[str, Any]] = None) -> List[ToolSpec
             "description": "Run a shell command in the workspace. Requires user approval. Input: command (str), cwd (optional, relative path). Requires workspace_root in context.",
             "function": lambda ctx, command=None, cwd=None: _tool_run_terminal_preview(ctx, command or "", cwd),
         },
-        *_get_codeiq_tools(context),
     ]
 
 
@@ -469,7 +468,7 @@ def run_loop(
         approval_note = " Autonomous mode: edit_file and run_terminal will run immediately without asking."
 
     system = _build_system_prompt(
-        context, tool_descriptions, guidance_block, workspace_block, approval_note
+        context, tool_descriptions, "", workspace_block, approval_note
     )
 
     first_content = (current[0].get("content") or "") if current else ""
@@ -603,71 +602,3 @@ def execute_pending_and_continue(
     )  # returns 4-tuple; pass through
 
 
-def _get_codeiq_tools(context: Optional[Dict[str, Any]] = None) -> List[ToolSpec]:
-    """Optional CodeIQ tools (cuddly-octo). Context can set codeiq_enabled=False or codeiq_workspace (overrides env)."""
-    context = context or {}
-    if context.get("codeiq_enabled") is False:
-        return []
-    workspace = (context.get("codeiq_workspace") or os.environ.get("CODEIQ_WORKSPACE") or "").strip()
-    if not workspace or not os.path.isdir(workspace):
-        return []
-
-    def _run_codeiq(subcmd: str, *args: str) -> str:
-        try:
-            cmd = [subprocess.get_executable(), "-m", "codeiq.cli", subcmd] + list(args)
-            r = subprocess.run(cmd, cwd=workspace, capture_output=True, text=True, timeout=30)
-            out = (r.stdout or "") + (r.stderr or "")
-            return out[:6000] if out else "No output."
-        except Exception as e:
-            return f"CodeIQ error: {e}"
-
-    def _search(ctx: Dict[str, Any], query: Optional[str] = None, **kwargs: Any) -> str:
-        q = query or kwargs.get("query") or ""
-        if not q:
-            return json.dumps({"error": "query required"})
-        return json.dumps({"query": q, "output": _run_codeiq("search", q)})
-
-    def _analyze(ctx: Dict[str, Any], path: Optional[str] = None, **kwargs: Any) -> str:
-        p = path or kwargs.get("path") or "."
-        return json.dumps({"path": p, "output": _run_codeiq("analyze")})
-
-    return [
-        {
-            "name": "search_code",
-            "description": "Semantic search over the codebase (CodeIQ). Input: query (string). Set CODEIQ_WORKSPACE to enable.",
-            "function": _search,
-        },
-        {
-            "name": "analyze_code",
-            "description": "Run code analysis (issues, duplicates, complexity) on the workspace (CodeIQ). Input: path (optional). Set CODEIQ_WORKSPACE to enable.",
-            "function": _analyze,
-        },
-    ]
-
-
-def _get_codelearn_guidance_block(context: Optional[Dict[str, Any]] = None) -> str:
-    """If CodeLearn URL is set (context or env), fetch avoid/encourage. Context can set codelearn_enabled=False or codelearn_guidance_url."""
-    context = context or {}
-    if context.get("codelearn_enabled") is False:
-        return ""
-    url = (context.get("codelearn_guidance_url") or os.environ.get("CODELEARN_GUIDANCE_URL") or "").strip()
-    if not url:
-        return ""
-    try:
-        import urllib.request
-        req = urllib.request.Request(url.rstrip("/") + "/guidance", method="GET")
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read().decode())
-        avoid = data.get("avoid", [])[:5]
-        encourage = data.get("encourage", [])[:5]
-        if not avoid and not encourage:
-            return ""
-        lines = ["\nCode quality guidance (from CodeLearn):"]
-        if avoid:
-            lines.append("Avoid: " + "; ".join(a.get("pattern", a) if isinstance(a, dict) else str(a) for a in avoid))
-        if encourage:
-            lines.append("Encourage: " + "; ".join(e.get("pattern", e) if isinstance(e, dict) else str(e) for e in encourage))
-        return "\n".join(lines)
-    except Exception as e:
-        logger.debug("CodeLearn guidance fetch failed: %s", e)
-        return ""

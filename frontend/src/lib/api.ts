@@ -170,6 +170,14 @@ export const subscriptionsApi = {
   getBillingHistory: () => api.get('/subscriptions/billing-history'),
 };
 
+// Workspace API (IDE file tree and editor)
+export const workspaceApi = {
+  list: (root: string, path: string = '.') =>
+    api.get<{ path: string; entries: string[] }>('/workspace/list', { params: { root, path } }),
+  read: (root: string, path: string) =>
+    api.get<{ path: string; content: string }>('/workspace/read', { params: { root, path } }),
+};
+
 // Build API (conversational app creation)
 export const buildApi = {
   suggestQuestion: (data: { messages: { role: string; content: string }[] }) =>
@@ -180,6 +188,9 @@ export const buildApi = {
   getProject: (id: number) => api.get(`/build/projects/${id}`),
   downloadProject: (id: number) =>
     api.get(`/build/projects/${id}/download`, { responseType: 'blob' }),
+  /** Get project as single HTML for opening in browser (Synthesis-style). */
+  getProjectOpen: (id: number) =>
+    api.get<string>(`/build/projects/${id}/open`, { responseType: 'text' }),
   deleteProject: (id: number) => api.delete(`/build/projects/${id}`),
 };
 
@@ -187,19 +198,12 @@ export const buildApi = {
 export type PendingApproval = { tool: string; args: Record<string, unknown>; preview: string };
 export type AgentContext = {
   workspace_root?: string;
-  codelearn_enabled?: boolean;
-  codelearn_guidance_url?: string;
-  codeiq_enabled?: boolean;
-  codeiq_workspace?: string;
-  /** When true, edit_file and run_terminal execute without approval (opt-in). */
+  agent_style?: string;
   autonomous?: boolean;
-  /** When true, inject semantic snippets into prompt (requires sentence-transformers on backend). */
-  use_semantic_context?: boolean;
 };
 
 export const agentApi = {
-  config: () =>
-    api.get<{ codelearn_guidance_url: string; codeiq_workspace: string }>('/agent/config'),
+  config: () => api.get<Record<string, unknown>>('/agent/config'),
   chat: (data: {
     messages: { role: string; content: string }[];
     context?: AgentContext;
