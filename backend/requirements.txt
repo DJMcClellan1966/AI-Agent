@@ -37,6 +37,9 @@ pyyaml==6.0.1
 jinja2==3.1.3
 email-validator==2.1.0
 
+# Optional: semantic workspace context (agent prompt injection by meaning)
+# pip install sentence-transformers  # then set use_semantic_context in agent context
+
 # Local LLM Support (Optional - install based on your choice)
 # Uncomment the one you want to use:
 # ollama==0.1.6  # Easiest, recommended

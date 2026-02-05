@@ -193,6 +193,8 @@ export type AgentContext = {
   codeiq_workspace?: string;
   /** When true, edit_file and run_terminal execute without approval (opt-in). */
   autonomous?: boolean;
+  /** When true, inject semantic snippets into prompt (requires sentence-transformers on backend). */
+  use_semantic_context?: boolean;
 };
 
 export const agentApi = {

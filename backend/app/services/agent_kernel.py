@@ -5,6 +5,7 @@ Run a conversation; LLM can call tools; edit_file and run_terminal require human
 import json
 import logging
 import os
+import re
 import difflib
 import subprocess
 from typing import Any, Dict, List, Optional, Tuple
@@ -166,6 +167,54 @@ def _execute_edit_file(context: Dict[str, Any], path: str, old_string: str, new_
         return json.dumps({"error": str(e)})
 
 
+def _extract_code_block(text: str) -> str:
+    """Extract first ```...``` block (optional python label). Returns empty string if none."""
+    if not (text or isinstance(text, str)):
+        return ""
+    # ```python\n...\n``` or ```\n...\n```
+    m = re.search(r"```(?:python)?\s*\n(.*?)```", text.strip(), re.DOTALL)
+    return m.group(1).strip() if m else ""
+
+
+def _tool_suggest_fix(context: Dict[str, Any], error: str, code: Optional[str] = None) -> str:
+    """
+    Suggest a fix for code or a command that produced an error (ML-ToolBox improve_code prompt).
+    Uses the app LLM; no external dependency.
+    """
+    error = (error or "").strip()
+    if not error:
+        return json.dumps({"error": "error is required (e.g. the traceback or error message)."})
+    code = (code or "").strip()
+    if code:
+        prompt = f"""Fix this Python code that has an error:
+
+Code:
+{code}
+
+Error:
+{error}
+
+Provide the fixed code only (no explanation, or a brief one after the code). Use a code block."""
+    else:
+        prompt = f"""The following error occurred. Suggest fixed code or a command to resolve it.
+
+Error:
+{error}
+
+Provide the fix (use a code block for code, or clear instructions)."""
+
+    llm_type, llm = _get_llm()
+    if not llm:
+        return json.dumps({"error": "No LLM configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY.", "suggested_fix": ""})
+    raw = _generate(llm_type, llm, prompt, max_tokens=1500)
+    if not raw:
+        return json.dumps({"error": "LLM produced no response.", "suggested_fix": ""})
+    suggested = _extract_code_block(raw)
+    if not suggested:
+        suggested = raw[:2000].strip()
+    return json.dumps({"suggested_fix": suggested, "raw_preview": raw[:500]})
+
+
 def _tool_run_terminal_preview(context: Dict[str, Any], command: str, cwd: Optional[str] = None) -> Dict[str, Any]:
     """Return pending_approval with command preview; does not run."""
     preview = f"Command: {command}"
@@ -239,6 +288,11 @@ def get_default_tools(context: Optional[Dict[str, Any]] = None) -> List[ToolSpec
             "function": lambda ctx, pattern=None, path=".", **kwargs: _tool_search_files(ctx, pattern or kwargs.get("query") or "", path or kwargs.get("path") or "."),
         },
         {
+            "name": "suggest_fix",
+            "description": "Suggest a fix when code or a command produced an error. Input: error (required, the traceback or error message), code (optional, the code that failed). Use after run_terminal or when the user reports an error. Returns suggested_fix (code or instructions).",
+            "function": lambda ctx, error=None, code=None, **kwargs: _tool_suggest_fix(ctx, error or kwargs.get("error") or "", code or kwargs.get("code")),
+        },
+        {
             "name": "edit_file",
             "description": "Edit a file: replace old_string with new_string (first occurrence). Requires user approval. Input: path, old_string, new_string. Requires workspace_root in context.",
             "function": lambda ctx, path=None, old_string=None, new_string=None: _tool_edit_file_preview(ctx, path or "", old_string or "", new_string or ""),
@@ -284,6 +338,15 @@ def _get_workspace_context_block(context: Dict[str, Any], messages: List[Dict[st
                         break  # one search is enough for context
                 except (json.JSONDecodeError, TypeError):
                     pass
+    # Optional: semantic snippets (sentence_transformers); set context.use_semantic_context=True
+    if last_user and context.get("use_semantic_context"):
+        try:
+            from app.services.semantic_context import format_semantic_block
+            block = format_semantic_block(root, last_user, max_snippets=5)
+            if block:
+                lines.append(block)
+        except Exception as e:
+            logger.debug("Semantic context failed: %s", e)
     return "\n".join(lines) if len(lines) > 1 else ""
 
 

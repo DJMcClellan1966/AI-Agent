@@ -58,6 +58,7 @@ export default function AgentPage() {
   const [integrationsLoaded, setIntegrationsLoaded] = useState(false);
   const [showCuddlyOcto, setShowCuddlyOcto] = useState(false);
   const [autonomous, setAutonomous] = useState(false);
+  const [useSemanticContext, setUseSemanticContext] = useState(false);
   const conversationEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -118,8 +119,9 @@ export default function AgentPage() {
       base.codeiq_workspace = integrations.codeiq.workspace.trim();
     }
     if (autonomous) base.autonomous = true;
+    if (useSemanticContext) base.use_semantic_context = true;
     return Object.keys(base).length ? base : undefined;
-  }, [workspaceRoot, integrations, autonomous]);
+  }, [workspaceRoot, integrations, autonomous, useSemanticContext]);
 
   const sendToAgent = async (messagesForApi: Record<string, string>[]) => {
     setError(null);
@@ -234,6 +236,21 @@ export default function AgentPage() {
                 Load server defaults
               </Button>
             </div>
+            <div className="space-y-3">
+              {workspaceRoot && (
+                <div className="rounded-lg border border-white/10 bg-[#1a1a24] p-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useSemanticContext}
+                      onChange={(e) => setUseSemanticContext(e.target.checked)}
+                      className="rounded border-white/20 bg-[#0a0a0f] text-indigo-500 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm font-medium text-[#e8e8ed]">Semantic context</span>
+                  </label>
+                  <p className="text-xs text-[#555568] mt-1">Inject relevant code snippets by meaning (needs sentence-transformers on server).</p>
+                </div>
+              )}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-lg border border-white/10 bg-[#1a1a24] p-3 space-y-2">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -271,6 +288,7 @@ export default function AgentPage() {
                   className="w-full rounded border border-white/10 bg-[#0a0a0f] px-3 py-2 text-sm text-[#e8e8ed] placeholder:text-[#555568] focus:outline-none focus:border-indigo-500"
                 />
               </div>
+            </div>
             </div>
           </div>
         )}
