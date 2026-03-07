@@ -21,6 +21,7 @@ Open http://localhost:3000. In the IDE, set **Workspace root** to a folder path 
 ## Guide docs (this repo)
 
 - [docs/AGENT_ROADMAP.md](docs/AGENT_ROADMAP.md) – Agent kernel, tools, roadmap.
+- [docs/TAILORED_AGENT_ROADMAP.md](docs/TAILORED_AGENT_ROADMAP.md) – Tailored agent / twin: dictionary, RAG, verify loop (Local + Handbook ideas).
 - [docs/COMPARISON_AND_IMPROVEMENTS.md](docs/COMPARISON_AND_IMPROVEMENTS.md) – How this compares to Cursor, Synthesis, etc.
 - [docs/CUDDLY_OCTO_BENEFITS.md](docs/CUDDLY_OCTO_BENEFITS.md) – CodeIQ/CodeLearn ideas (reference; integration code removed for simplicity).
 - [docs/DESKTOP_CODE_FINDINGS.md](docs/DESKTOP_CODE_FINDINGS.md) – Desktop/code findings.

@@ -151,3 +151,9 @@ All three phases are implemented:
 - **`python -m app.agent_cli`** (from backend dir): `--workspace PATH`, `--autonomous`, `--no-search-context`. Same kernel, no server.
 
 **How to try it:** Open the Agent page, set a workspace root (or use Integrations for CodeIQ), and ask e.g. “Search for TODO in this project” or “List files in src.” For edits or commands, approve in the UI (or turn on Autonomous). Or run the CLI from the backend directory.
+
+---
+
+## See also
+
+**Tailored agent / twin:** For a roadmap that combines dictionary grounding, user RAG (twin), and a verify loop using Local and LLM Engineer's Handbook ideas, see [TAILORED_AGENT_ROADMAP.md](TAILORED_AGENT_ROADMAP.md).

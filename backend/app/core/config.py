@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-change-in-production"
     
     # Database (use SQLite for simplified local run: sqlite:///./agentic_ai.db)
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/agentic_ai"
+    DATABASE_URL: str = "sqlite:///./agentic_ai.db"
     
     # Redis (required only when USE_CELERY=true)
     REDIS_URL: str = "redis://localhost:6379"
@@ -100,7 +100,7 @@ class Settings(BaseSettings):
         return _parse_list_str(v)
 
     class Config:
-        env_file = ".env"
+        env_file = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
         case_sensitive = True
         extra = "ignore"  # ignore extra keys from .env (e.g. NEXT_PUBLIC_* for frontend)
 
